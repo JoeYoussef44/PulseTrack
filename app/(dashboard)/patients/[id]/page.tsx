@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { SendAssessment } from "@/components/assessments/send-assessment";
 import { DeletePatient } from "@/components/patients/delete-patient";
 import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
+import { bandTone } from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { toIsoDate } from "@/lib/validation/patient";
@@ -49,7 +51,18 @@ export default async function PatientDetailPage({
       phone: true,
       fhirOwnership: true,
       fhirPatientId: true,
-      _count: { select: { labResults: true, assessments: true } },
+      assessments: {
+        orderBy: { sentAt: "desc" },
+        select: {
+          id: true,
+          status: true,
+          sentAt: true,
+          expiresAt: true,
+          completedAt: true,
+          totalScore: true,
+          riskBand: true,
+        },
+      },
     },
   });
 
@@ -110,11 +123,91 @@ export default async function PatientDetailPage({
         <CardHeader
           title="Assessments"
           description="DSMA-8 self-assessment history"
+          action={
+            <SendAssessment
+              patientId={patient.id}
+              hasEmail={Boolean(patient.email)}
+            />
+          }
         />
-        <EmptyState
-          title="No assessments sent"
-          description="Send this patient a DSMA-8 self-assessment to start tracking their score over time."
-        />
+        {patient.assessments.length === 0 ? (
+          <EmptyState
+            title="No assessments sent"
+            description="Send this patient a DSMA-8 self-assessment to start tracking their score over time."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b border-rule text-left">
+                  {["Sent", "Status", "Completed", "Score", "Risk band"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {patient.assessments.map((a) => {
+                  // Expiry is derived, not swept by a job, so a row still
+                  // marked SENT past its expiry displays as expired here.
+                  const expired =
+                    a.status === "SENT" && a.expiresAt.getTime() <= Date.now();
+                  const status = expired ? "EXPIRED" : a.status;
+
+                  return (
+                    <tr
+                      key={a.id}
+                      className="border-b border-rule last:border-0"
+                    >
+                      <td className="tabular px-5 py-3 text-ink-2">
+                        {toIsoDate(a.sentAt)}
+                      </td>
+                      <td className="px-5 py-3">
+                        <Badge
+                          tone={
+                            status === "COMPLETED"
+                              ? "low"
+                              : status === "EXPIRED"
+                                ? "neutral"
+                                : "accent"
+                          }
+                        >
+                          {status === "COMPLETED"
+                            ? "Completed"
+                            : status === "EXPIRED"
+                              ? "Expired"
+                              : "Awaiting reply"}
+                        </Badge>
+                      </td>
+                      <td className="tabular px-5 py-3 text-ink-2">
+                        {a.completedAt ? toIsoDate(a.completedAt) : "—"}
+                      </td>
+                      <td className="tabular px-5 py-3 font-mono text-ink">
+                        {a.totalScore ?? "—"}
+                        {a.totalScore !== null ? (
+                          <span className="text-muted"> / 24</span>
+                        ) : null}
+                      </td>
+                      <td className="px-5 py-3">
+                        {a.riskBand ? (
+                          <Badge tone={bandTone(a.riskBand)}>{a.riskBand}</Badge>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Card>
