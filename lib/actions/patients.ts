@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { syncPatientAfterWrite } from "@/lib/fhir/sync-hooks";
 import { Prisma } from "@/lib/generated/prisma/client";
 import { parseIsoDate, patientSchema } from "@/lib/validation/patient";
 
@@ -152,6 +153,11 @@ export async function createPatient(
     throw error;
   }
 
+  // Tier 2, requirement 1. After the local commit, never before it: a platform
+  // outage must not stop a clinician entering a patient, and this call cannot
+  // throw back into the action.
+  await syncPatientAfterWrite(patientId);
+
   revalidatePath("/patients");
   revalidatePath("/dashboard");
   redirect(`/patients/${patientId}`);
@@ -198,6 +204,10 @@ export async function updatePatient(
 
     throw error;
   }
+
+  // An edit re-pushes, which is a PUT to the resource we already own rather
+  // than a second create. Idempotent either way.
+  await syncPatientAfterWrite(patientId);
 
   revalidatePath("/patients");
   revalidatePath(`/patients/${patientId}`);

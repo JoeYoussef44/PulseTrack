@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/db";
+import { queueUploadForSync } from "@/lib/fhir/sync-hooks";
 import { LabSource } from "@/lib/generated/prisma/enums";
 import { toIsoDate, parseIsoDate } from "@/lib/validation/patient";
 
@@ -19,7 +20,15 @@ import { findByCsvCode } from "./test-catalog";
  */
 
 export type ImportOutcome =
-  | { ok: true; uploadId: string; filename: string; report: ImportReport; note?: string }
+  | {
+      ok: true;
+      uploadId: string;
+      filename: string;
+      report: ImportReport;
+      note?: string;
+      /** Results now queued for the national platform. 0 when FHIR is unset. */
+      queuedForFhir?: number;
+    }
   | { ok: false; error: string };
 
 export interface ImportInput {
@@ -185,6 +194,13 @@ export async function importLabCsv({
     { timeout: 20_000 },
   );
 
+  // Tier 2: the imported rows are queued for the national platform rather than
+  // pushed here. One request per row against a 120/min limit would exceed a
+  // 60-second function long before it finished, and would do so while the
+  // clinician is waiting for the validation report. The push runs afterwards
+  // as a bounded batch the UI can show progress for.
+  const queuedForFhir = await queueUploadForSync(uploadId);
+
   const lost = report.pending.length - inserted;
 
   // Ids and counts only — never a name, an MRN or a value. See CLAUDE.md.
@@ -196,6 +212,7 @@ export async function importLabCsv({
     ok: true,
     uploadId,
     filename,
+    queuedForFhir,
     report: {
       ...report,
       acceptedCount: inserted,
