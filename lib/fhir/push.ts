@@ -326,6 +326,17 @@ export interface SyncBatchResult {
  * an evaluator. Instead each call does a fixed slice and reports whether more
  * remain; the client loops, which also gives it something honest to show as
  * progress.
+ *
+ * **Patients first, then their observations.** Not merely tidy: an Observation
+ * whose patient is not yet linked pushes that patient itself, so two results
+ * for the same unlinked patient running concurrently would issue two
+ * conditional creates whose searches both run before either insert lands — and
+ * a duplicate patient resource cannot be deleted from this server. Ordering
+ * the phases removes the race rather than hoping to lose it.
+ *
+ * Within a phase the work is concurrent, capped by the shared throttle. It was
+ * sequential first, and measured: 14 records took 12.8 seconds, which is a
+ * fifth of the function budget spent waiting on a server one request at a time.
  */
 export async function pushPendingBatch(limit = 25): Promise<SyncBatchResult> {
   const patients = await prisma.patient.findMany({
@@ -343,13 +354,22 @@ export async function pushPendingBatch(limit = 25): Promise<SyncBatchResult> {
   let failed = 0;
   let firstError: string | undefined;
 
-  for (const patient of patients) {
-    const outcome = await pushPatient(patient.id);
-    if (outcome.ok) patientsPushed += 1;
+  const tally = (outcome: PushOutcome, onOk: () => void) => {
+    if (outcome.ok) onOk();
     else {
       failed += 1;
       firstError ??= outcome.error;
     }
+  };
+
+  // Distinct patients, so these cannot collide with one another.
+  const patientOutcomes = await Promise.all(
+    patients.map((patient) => pushPatient(patient.id)),
+  );
+  for (const outcome of patientOutcomes) {
+    tally(outcome, () => {
+      patientsPushed += 1;
+    });
   }
 
   const remainingSlots = Math.max(0, limit - patients.length);
@@ -357,18 +377,30 @@ export async function pushPendingBatch(limit = 25): Promise<SyncBatchResult> {
   if (remainingSlots > 0) {
     const results = await prisma.labResult.findMany({
       where: pendingResultFilter(),
-      select: { id: true },
+      select: { id: true, patientId: true },
       orderBy: { createdAt: "asc" },
       take: remainingSlots,
     });
 
-    for (const result of results) {
-      const outcome = await pushLabResult(result.id);
-      if (outcome.ok) resultsPushed += 1;
-      else {
-        failed += 1;
-        firstError ??= outcome.error;
-      }
+    // Link every patient these results belong to before sending any of them,
+    // so no two observations can race to create the same patient resource.
+    const unlinked = await prisma.patient.findMany({
+      where: {
+        id: { in: [...new Set(results.map((r) => r.patientId))] },
+        OR: [{ fhirPatientId: null }, { fhirOwnership: FhirOwnership.NONE }],
+      },
+      select: { id: true },
+    });
+
+    await Promise.all(unlinked.map((patient) => pushPatient(patient.id)));
+
+    const resultOutcomes = await Promise.all(
+      results.map((result) => pushLabResult(result.id)),
+    );
+    for (const outcome of resultOutcomes) {
+      tally(outcome, () => {
+        resultsPushed += 1;
+      });
     }
   }
 

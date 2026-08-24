@@ -46,9 +46,10 @@ export function PushPanel({
   const router = useRouter();
 
   const [busy, setBusy] = useState(false);
-  const [pushed, setPushed] = useState<{ patients: number; results: number } | null>(
-    null,
-  );
+  const [pushed, setPushed] = useState<{
+    patients: number;
+    results: number;
+  } | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,8 +68,7 @@ export function PushPanel({
       for (let batch = 0; batch < MAX_BATCHES; batch++) {
         const response = await fetch("/api/fhir/sync", { method: "POST" });
         const data = (await response.json().catch(() => null)) as
-          | (BatchResult & { error?: string })
-          | null;
+          (BatchResult & { error?: string }) | null;
 
         if (!response.ok) {
           setError(data?.error ?? "The sync failed. Try again.");
@@ -96,7 +96,9 @@ export function PushPanel({
         if (!data.more) break;
       }
     } catch {
-      setError("Could not reach the server. Check your connection and try again.");
+      setError(
+        "Could not reach the server. Check your connection and try again.",
+      );
     } finally {
       setBusy(false);
       // The counts on this page are server-rendered.
@@ -106,6 +108,12 @@ export function PushPanel({
 
   const nothingToDo = pending === 0;
 
+  // With nothing queued, nothing failed and nothing refused, the body has no
+  // content — and an empty padded div renders as a stray strip under the
+  // header rather than as nothing at all.
+  const hasBody =
+    busy || pushed !== null || error !== null || failed > 0 || forbidden > 0;
+
   return (
     <Card>
       <CardHeader
@@ -113,48 +121,59 @@ export function PushPanel({
         description="Patients and locally-imported lab results are reported to the platform. Data pulled from it is never sent back."
         action={
           <Button onClick={push} disabled={disabled || busy || nothingToDo}>
-            {busy ? "Pushing…" : nothingToDo ? "Nothing queued" : `Push ${pending}`}
+            {busy
+              ? "Pushing…"
+              : nothingToDo
+                ? "Nothing queued"
+                : `Push ${pending}`}
           </Button>
         }
       />
 
-      <div className="flex flex-col gap-4 px-5 py-5">
-        {busy || pushed ? (
-          <div
-            role="status"
-            className="rounded-md border border-rule bg-subtle px-4 py-3 text-sm text-ink"
-          >
-            {busy ? "Pushing… " : "Finished. "}
-            <span className="tabular-nums">
-              {pushed?.patients ?? 0} {pushed?.patients === 1 ? "patient" : "patients"}
-              {" and "}
-              {pushed?.results ?? 0} {pushed?.results === 1 ? "result" : "results"} sent
-            </span>
-            {remaining !== null && remaining > 0 ? (
-              <span className="text-muted"> · {remaining} still queued</span>
-            ) : null}
-          </div>
-        ) : null}
+      {hasBody ? (
+        <div className="flex flex-col gap-4 px-5 py-5">
+          {busy || pushed ? (
+            <div
+              role="status"
+              className="rounded-md border border-rule bg-subtle px-4 py-3 text-sm text-ink"
+            >
+              {busy ? "Pushing… " : "Finished. "}
+              <span className="tabular-nums">
+                {pushed?.patients ?? 0}{" "}
+                {pushed?.patients === 1 ? "patient" : "patients"}
+                {" and "}
+                {pushed?.results ?? 0}{" "}
+                {pushed?.results === 1 ? "result" : "results"} sent
+              </span>
+              {remaining !== null && remaining > 0 ? (
+                <span className="text-muted"> · {remaining} still queued</span>
+              ) : null}
+            </div>
+          ) : null}
 
-        {error ? <Alert title="The push did not finish">{error}</Alert> : null}
+          {error ? (
+            <Alert title="The push did not finish">{error}</Alert>
+          ) : null}
 
-        {failed > 0 && !busy ? (
-          <Alert tone="info">
-            {failed} {failed === 1 ? "record" : "records"} failed on a previous
-            attempt and {failed === 1 ? "is" : "are"} included in the queue above.
-            Failures are retried; they are not lost.
-          </Alert>
-        ) : null}
+          {failed > 0 && !busy ? (
+            <Alert tone="info">
+              {failed} {failed === 1 ? "record" : "records"} failed on a
+              previous attempt and {failed === 1 ? "is" : "are"} included in the
+              queue above. Failures are retried; they are not lost.
+            </Alert>
+          ) : null}
 
-        {forbidden > 0 ? (
-          <Alert tone="info" title="Some records cannot be sent">
-            The platform refused {forbidden} {forbidden === 1 ? "record" : "records"}{" "}
-            because {forbidden === 1 ? "it belongs" : "they belong"} to another
-            organisation. That is a permanent answer, so these are not retried —
-            see the list below.
-          </Alert>
-        ) : null}
-      </div>
+          {forbidden > 0 ? (
+            <Alert tone="info" title="Some records cannot be sent">
+              The platform refused {forbidden}{" "}
+              {forbidden === 1 ? "record" : "records"} because{" "}
+              {forbidden === 1 ? "it belongs" : "they belong"} to another
+              organisation. That is a permanent answer, so these are not retried
+              — see the list below.
+            </Alert>
+          ) : null}
+        </div>
+      ) : null}
     </Card>
   );
 }
