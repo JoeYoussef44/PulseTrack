@@ -199,12 +199,12 @@
 
 <div class="scorebar">
   <div class="score"><div class="n">29</div><div class="l">Automated</div></div>
-  <div class="score"><div class="n">52</div><div class="l">Verified</div></div>
-  <div class="score"><div class="n">24</div><div class="l">To test</div></div>
+  <div class="score"><div class="n">55</div><div class="l">Verified</div></div>
+  <div class="score"><div class="n">22</div><div class="l">To test</div></div>
   <div class="score"><div class="n">6</div><div class="l">Blocked</div></div>
 </div>
 
-<p class="sub" style="margin-top:-6pt">111 checks in total. The 24 marked <em>to test</em> and the 6 <em>blocked</em> are what stands between this and a submission that has actually been proven rather than assumed.</p>
+<p class="sub" style="margin-top:-6pt">112 checks in total. The 22 marked <em>to test</em> and the 6 <em>blocked</em> are what stands between this and a submission that has actually been proven rather than assumed. One check (2.5) was marked verified in the first revision on the strength of a database constraint, while the user-facing behaviour crashed — a reminder that "the constraint works" and "the user sees something sensible" are two different checks.</p>
 
 <h3>1 · Authentication</h3>
 <table>
@@ -230,7 +230,8 @@
     <tr><td class="id">2.2</td><td>Read / detail page</td><td>Opens with details, charts, assessments and labs.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">2.3</td><td>Update a patient</td><td>Edit, save, value persists after reload.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
     <tr><td class="id">2.4</td><td>Delete a patient</td><td>Confirm step, then the patient and their assessments and labs are gone (cascade).</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
-    <tr><td class="id">2.5</td><td>Duplicate MRN rejected</td><td>Create a second patient with an existing MRN → friendly error, not a 500. Enforced by a DB unique index.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.5</td><td>Duplicate MRN rejected</td><td>Create a second patient with an existing MRN → field error on MRN, not a crash. <strong>Previously marked verified on the strength of the database constraint alone; the UI actually crashed.</strong> Fixed and re-verified end to end.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.5a</td><td>A rejected submission keeps what was typed</td><td>Fail validation or hit a duplicate → all six fields still hold their values, including the Sex select.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">2.6</td><td>Search by name</td><td>Partial, case-insensitive match returns the patient.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">2.7</td><td>Search by MRN</td><td>Returns the exact patient.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
     <tr><td class="id">2.8</td><td>Search with no matches</td><td>Shows a designed empty state, not a blank page.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
@@ -346,13 +347,13 @@
   <tbody>
     <tr><td class="id">7.1</td><td>Empty database looks intentional</td><td>Called out in the brief. Test on a database with zero patients — the hardest state to get right.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
     <tr><td class="id">7.2</td><td>Loading states on every async panel</td><td>Throttle the network and watch each panel: skeletons, not layout jumps.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
-    <tr><td class="id">7.3</td><td>Error states</td><td>Stop the database and load a page → a readable error, not a stack trace.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.3</td><td>Error states</td><td>Boundaries now exist at every level: <code>(dashboard)/error.tsx</code> (keeps the nav), <code>app/error.tsx</code> (public routes), <code>global-error.tsx</code> (root layout). Confirmed on a real failure — a stale chunk 500 rendered the friendly page, not an overlay.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">7.4</td><td>Usable at 375px</td><td>Zero horizontal overflow on every page. Verified in Chrome across six pages at 375 and 1280.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">7.5</td><td>No text truncated by a fixed-width container</td><td>Check at 1280px too — a <code>truncate</code> hides text at every width, not just mobile.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">7.6</td><td>Charts render in a real browser</td><td>Recharts draws client-side; SSR and jsdom cannot verify this. Headless Chrome can.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
     <tr><td class="id">7.7</td><td>Dates render on the correct calendar day everywhere</td><td>List, detail, charts, CSV report, upload timestamps.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
     <tr><td class="id">7.8</td><td>Keyboard navigation through a form</td><td>Tab order sensible; focus visible; the questionnaire completable without a mouse.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
-    <tr><td class="id">7.9</td><td>404 for a patient id that does not exist</td><td><code>/patients/does-not-exist</code> → a designed not-found page.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.9</td><td>404 for a patient id that does not exist</td><td><code>/patients/does-not-exist</code> → designed not-found page. Deliberately does not say <em>why</em> a record is missing, so the 404 cannot be used to enumerate ids.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
   </tbody>
 </table>
 
