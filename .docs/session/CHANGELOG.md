@@ -8,6 +8,55 @@ reconstruct it from diffs.
 
 ---
 
+## Session 2 — 2026-08-24 (Mon) — repo published, history restructured
+
+### B1 cleared — the diagnosis in session 1 was wrong
+
+`git push` was not failing for want of a login. All three GitHub accounts were
+already in the keyring; `JoeYoussef44` simply was not the **active** one.
+`gh auth switch --user JoeYoussef44` resolved it in one command — no
+`gh auth login --web` needed. It has admin/push on the repo.
+
+### History restructured into feature branches, before the first push
+
+Joe asked that the work be published feature-by-feature rather than as one
+linear push, so the incremental process is visible to the evaluators. Because
+**nothing had ever been pushed** (`git ls-remote` returned zero refs), this was
+free: no force-push, no rewritten public commit, no changed SHA.
+
+The key mechanic: the nine commits were already sequential, so each feature
+branch could be pointed at an **existing commit** rather than cherry-picked.
+Each PR's merge base is therefore the previous feature's tip, and every PR shows
+exactly its own diff with original authorship and timestamps intact.
+
+Four PRs, opened and merged in order with `--merge` (never squash), each body
+carrying what changed, why the non-obvious decisions were made, and the real
+`vitest` output captured at that branch's own state (40 → 40 → 68 → 85 tests).
+Branches kept after merge as part of the evidence.
+
+**Verified:** `git diff backup/pre-restructure main` is empty — the published
+tree is byte-identical to the pre-restructure tip. 85 tests pass on `main`.
+
+No commit dates were faked. The merge commits are dated now; the underlying
+commits keep their true authorship times.
+
+### Secret scan before publishing
+
+The repo is public, so every value in `.env` was grepped against the full
+`git log --all -p`. All five real secrets — `DATABASE_URL`, `DIRECT_URL`,
+`AUTH_SECRET`, `SEED_CLINICIAN_PASSWORD`, `FHIR_API_KEY` — are absent from
+history. Four non-secrets do appear and are fine by design: the fabricated seed
+login and `localhost:3000` in session notes, and the FHIR base URL and
+`cand-joe-l` candidate id, both of which come from the official public
+attachment.
+
+### Left undone
+
+Unchanged from session 1 — Phase 4 (CSV importer) is still the next build task.
+B2 (Vercel) is still open.
+
+---
+
 ## Session 1 — 2026-08-24 (Mon)
 
 **Phases 0 → 3 complete.** Tier 1 ~50%. 8 commits, none containing a secret.
