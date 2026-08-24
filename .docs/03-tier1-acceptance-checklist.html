@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PulseTrack — Tier 1 Acceptance Checklist</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm 16mm 13mm; }
+
+  :root {
+    --ink: #14201c;
+    --ink-2: #3d4a45;
+    --muted: #6b7873;
+    --rule: #dfe4e1;
+    --accent: #0f5132;
+    --accent-soft: #e7f0eb;
+    --amber: #8a6100;
+    --amber-soft: #fdf3dc;
+    --red: #9b2c2c;
+    --red-soft: #fbeaea;
+    --grey-soft: #f1f3f2;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font: 10.2pt/1.5 "Segoe UI", -apple-system, system-ui, sans-serif;
+    color: var(--ink);
+    background: #fff;
+  }
+
+  h1 { font-size: 22pt; margin: 0 0 4pt; letter-spacing: -0.4pt; }
+  h2 {
+    font-size: 13pt; margin: 20pt 0 7pt; padding-bottom: 4pt;
+    border-bottom: 1.5pt solid var(--accent); color: var(--accent);
+    letter-spacing: -0.2pt;
+  }
+  h3 { font-size: 10.8pt; margin: 13pt 0 5pt; color: var(--ink); }
+  p { margin: 0 0 7pt; }
+  ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 3pt; }
+  code {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 8.8pt; background: var(--grey-soft);
+    padding: 0.5pt 3pt; border-radius: 2pt;
+  }
+  strong { font-weight: 600; }
+
+  .sub { color: var(--muted); font-size: 10pt; margin-bottom: 2pt; }
+  .lede { font-size: 11pt; color: var(--ink-2); margin-bottom: 12pt; }
+
+  header.doc {
+    border-bottom: 2.5pt solid var(--accent);
+    padding-bottom: 9pt; margin-bottom: 4pt;
+  }
+  .kicker {
+    text-transform: uppercase; letter-spacing: 1.4pt;
+    font-size: 7.6pt; color: var(--accent); font-weight: 600; margin-bottom: 5pt;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; }
+  th {
+    text-align: left; font-size: 7.8pt; text-transform: uppercase;
+    letter-spacing: 0.6pt; color: var(--muted); font-weight: 600;
+    border-bottom: 1pt solid var(--rule); padding: 4pt 5pt;
+  }
+  td {
+    padding: 5pt; border-bottom: 0.5pt solid var(--rule);
+    vertical-align: top; font-size: 9.4pt;
+  }
+  tr { page-break-inside: avoid; }
+  td.id { font-family: "Cascadia Mono", Consolas, monospace; font-size: 8.4pt; color: var(--muted); white-space: nowrap; width: 34pt; }
+  td.st { white-space: nowrap; width: 74pt; }
+
+  .pill {
+    display: inline-block; font-size: 7.6pt; font-weight: 600;
+    padding: 1.5pt 5pt; border-radius: 8pt; letter-spacing: 0.2pt;
+  }
+  .auto  { background: #e4edf6; color: #17456f; }
+  .ver   { background: var(--accent-soft); color: var(--accent); }
+  .todo  { background: var(--amber-soft); color: var(--amber); }
+  .block { background: var(--red-soft); color: var(--red); }
+
+  .callout {
+    border-left: 2.5pt solid var(--accent); background: var(--accent-soft);
+    padding: 7pt 10pt; margin: 9pt 0; page-break-inside: avoid;
+  }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+  .callout.stop { border-left-color: var(--red); background: var(--red-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9pt; }
+  .box {
+    border: 0.5pt solid var(--rule); border-radius: 4pt;
+    padding: 8pt 10pt; page-break-inside: avoid;
+  }
+  .box h4 { margin: 0 0 4pt; font-size: 9.6pt; }
+  .box p { font-size: 9.2pt; color: var(--ink-2); margin: 0; }
+
+  .legend { display: flex; gap: 14pt; flex-wrap: wrap; margin: 8pt 0 12pt; font-size: 9pt; }
+  .legend span.pill { margin-right: 4pt; }
+
+  .scorebar { display: flex; gap: 7pt; margin: 10pt 0 14pt; }
+  .score {
+    flex: 1; border: 0.5pt solid var(--rule); border-radius: 4pt;
+    padding: 7pt 9pt; text-align: center;
+  }
+  .score .n { font-size: 17pt; font-weight: 600; line-height: 1.1; }
+  .score .l { font-size: 7.8pt; text-transform: uppercase; letter-spacing: 0.5pt; color: var(--muted); }
+
+  .pagebreak { page-break-before: always; }
+  footer.doc {
+    margin-top: 16pt; padding-top: 7pt; border-top: 0.5pt solid var(--rule);
+    font-size: 8.4pt; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <div class="kicker">Capadev Challenge · Pre-submission QA</div>
+  <h1>PulseTrack — Tier 1 Acceptance Checklist</h1>
+  <div class="sub">What Tier 1 must present, and every check that has to pass before submission.</div>
+</header>
+
+<p class="lede">
+  Derived from <code>candidate-brief.md</code> (the authority on scope),
+  <code>questionnaire-dsma8.json</code>, <code>lab-results-template.csv</code> and the
+  Definition of Done in <code>01-challenge-analysis.md</code> §19.
+  Statuses reflect what has actually been run, not what is believed to work.
+</p>
+
+<h2>Part A — What Tier 1 is supposed to present</h2>
+
+<p>
+  The brief is explicit that <strong>“a complete, polished Tier 1 submission is a fully valid
+  submission”</strong> and that <strong>“quality beats quantity every time.”</strong> Tier 1 is not
+  a stepping stone to be rushed through — it is the thing being graded. Tier 2 adds depth on top of
+  it, and an undocumented Tier 2 scores worse than a polished Tier 1.
+</p>
+
+<h3>The story the app has to tell</h3>
+<p>
+  A small diabetes clinic. One clinician logs in and can run the whole loop without leaving the app:
+</p>
+<ol>
+  <li>See the state of the practice at a glance — how many patients, how many are answering their questionnaires, who is at risk.</li>
+  <li>Find or add a patient.</li>
+  <li>Email that patient a self-assessment link. The patient answers on their phone — <strong>no account, no login</strong> — and the score appears on their record.</li>
+  <li>Bulk-import lab results from a CSV the lab sent, including a messy one, and be told exactly what happened to every row.</li>
+  <li>Read the result as trends over time, per patient and across the clinic.</li>
+</ol>
+
+<h3>The six graded areas</h3>
+<table>
+  <thead><tr><th style="width:26%">Area</th><th>What “done” looks like</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Authentication</strong></td><td>Clinician email + password. <strong>No patient accounts exist anywhere.</strong> Be ready to justify the choice on the call.</td></tr>
+    <tr><td><strong>Patient management</strong></td><td>Full CRUD over name, DOB, sex, unique MRN, email, phone. List view with search. Real input validation.</td></tr>
+    <tr><td><strong>Questionnaire flow</strong></td><td>Tokenized email link → public form → 8 questions → server-computed score and band → history on the patient page. Links expire in 7 days and are single-use.</td></tr>
+    <tr><td><strong>CSV lab upload</strong></td><td>In-app template download, row-level validation, a per-row report saying <em>why</em>, partial import, and no duplicates on re-upload. <strong>“We will test your uploader with a deliberately messy file. Ugly data is the point.”</strong></td></tr>
+    <tr><td><strong>Dashboards</strong></td><td>Patient trends (at least glucose and HbA1c) plus score history; clinic aggregates, completion rate, per-band counts, recent uploads with a filter. <strong>“A dashboard with no data should look intentional, not broken.”</strong></td></tr>
+    <tr><td><strong>Documentation</strong></td><td>Setup under 10 minutes, architecture diagram, ERD, and Decisions &amp; tradeoffs. <strong>“We read this carefully.”</strong></td></tr>
+  </tbody>
+</table>
+
+<h3>What the submission itself consists of</h3>
+<div class="grid2">
+  <div class="box"><h4>1. Git repository link</h4><p>History intact and incremental — “we look at how you work, not just the end state.” Never squashed.</p></div>
+  <div class="box"><h4>2. Live URL on Vercel</h4><p>“Required, not optional.” Currently the only outstanding Tier 1 item.</p></div>
+  <div class="box"><h4>3. A test clinician login</h4><p>Sent in the submission email, not published in the public repo.</p></div>
+  <div class="box"><h4>4. The README</h4><p>Covering everything. Read carefully by the evaluators.</p></div>
+</div>
+
+<div class="callout">
+  <p><strong>Then a walkthrough call.</strong> You demo the app, then they ask detailed questions about
+  the code and the decisions. Anything in the README’s “Decisions &amp; tradeoffs” section is fair game —
+  which is why each decision there states the cost it accepts, not just the choice.</p>
+</div>
+
+<h3>Four things the brief signals it will actively probe</h3>
+<ul>
+  <li><strong>A deliberately messy CSV.</strong> Named outright. Partial import and per-row reasons are the requirement, not graceful failure.</li>
+  <li><strong>Security.</strong> “This is healthcare.” Tokenized links that expire, no secrets in the repo, nothing sensitive in logs or URLs, parameterized queries, sensible authorization.</li>
+  <li><strong>Empty, loading and error states.</strong> Called out explicitly as detail they care about.</li>
+  <li><strong>The README.</strong> Stated twice: setup under 10 minutes, and decisions read carefully.</li>
+</ul>
+
+<div class="pagebreak"></div>
+
+<h2>Part B — The acceptance checklist</h2>
+
+<div class="legend">
+  <div><span class="pill auto">AUTOMATED</span> covered by <code>npm test</code> (188 tests)</div>
+  <div><span class="pill ver">VERIFIED</span> confirmed against the running app, the live database, or the code itself</div>
+  <div><span class="pill todo">TO TEST</span> not yet exercised — do before submitting</div>
+  <div><span class="pill block">BLOCKED</span> needs the live Vercel URL</div>
+</div>
+
+<div class="scorebar">
+  <div class="score"><div class="n">29</div><div class="l">Automated</div></div>
+  <div class="score"><div class="n">52</div><div class="l">Verified</div></div>
+  <div class="score"><div class="n">24</div><div class="l">To test</div></div>
+  <div class="score"><div class="n">6</div><div class="l">Blocked</div></div>
+</div>
+
+<p class="sub" style="margin-top:-6pt">111 checks in total. The 24 marked <em>to test</em> and the 6 <em>blocked</em> are what stands between this and a submission that has actually been proven rather than assumed.</p>
+
+<h3>1 · Authentication</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">1.1</td><td>Valid credentials sign in</td><td>Log in as the seeded clinician → lands on <code>/dashboard</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">1.2</td><td>Wrong password is rejected</td><td>Same email, wrong password → generic error. Must <em>not</em> say whether the account exists.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">1.3</td><td>Unknown email is rejected identically</td><td>Same message and comparable response time as 1.2 — no user enumeration by text or timing.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">1.4</td><td>Passwords stored as bcrypt hashes only</td><td>Inspect the <code>clinicians</code> row — <code>passwordHash</code> is a bcrypt string, no plaintext column exists.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">1.5</td><td>Protected page while signed out redirects</td><td>Sign out, open <code>/patients</code> directly → redirected to <code>/login</code>.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">1.6</td><td>API route while signed out returns 401 JSON</td><td><code>curl -X POST /api/labs/upload</code> with no cookie → <strong>401 JSON</strong>, never a 307 to <code>/login</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">1.7</td><td>Server action rejects an unauthenticated caller</td><td>Every mutation calls <code>requireClinician()</code>; hidden UI is not the boundary.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">1.8</td><td>Sign out ends the session</td><td>Sign out, press Back → the protected page does not render from cache.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">1.9</td><td>No patient can authenticate anywhere</td><td>No patient account model exists; patients reach the form by token only.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<h3>2 · Patient management</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">2.1</td><td>Create a patient</td><td>All six fields save and appear in the list.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.2</td><td>Read / detail page</td><td>Opens with details, charts, assessments and labs.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.3</td><td>Update a patient</td><td>Edit, save, value persists after reload.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">2.4</td><td>Delete a patient</td><td>Confirm step, then the patient and their assessments and labs are gone (cascade).</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">2.5</td><td>Duplicate MRN rejected</td><td>Create a second patient with an existing MRN → friendly error, not a 500. Enforced by a DB unique index.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.6</td><td>Search by name</td><td>Partial, case-insensitive match returns the patient.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">2.7</td><td>Search by MRN</td><td>Returns the exact patient.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">2.8</td><td>Search with no matches</td><td>Shows a designed empty state, not a blank page.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">2.9</td><td>Required fields validated</td><td>Submit empty → per-field messages.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">2.10</td><td>Future date of birth rejected</td><td>Tomorrow’s date → “Date of birth cannot be in the future.”</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">2.11</td><td>Malformed email rejected</td><td><code>not-an-email</code> → clear message.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">2.12</td><td>Sex accepts only the enum</td><td>Values map to FHIR <code>Patient.gender</code>.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">2.13</td><td>DOB renders on the correct calendar day</td><td>Stored <code>@db.Date</code>; must not shift a day west of UTC.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+  </tbody>
+</table>
+
+<h3>3 · Assessment flow</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">3.1</td><td>Send assessment emails a tokenized link</td><td>Click Send → email dispatched (console adapter in dev) and a copy-link shown in the UI.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.2</td><td>Sending requires a patient email</td><td>Patient with no email → clear message, not a crash.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">3.3</td><td>Token is ≥32 random bytes</td><td>Generated with a CSPRNG.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.4</td><td>Only the SHA-256 hash is stored</td><td>The <code>assessments</code> row holds <code>tokenHash</code>; the raw token appears nowhere in the DB.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.5</td><td>Link works with no login</td><td>Open in a fresh cookie-less browser context → the form renders.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.6</td><td>All 8 questions and 4 options render exactly as the official JSON</td><td>8 fieldsets, 32 radios, wording identical to <code>questionnaire-dsma8.json</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.7</td><td>Incomplete submission is blocked</td><td>Answer 7 of 8 → refused with a clear message (<code>allItemsRequired: true</code>).</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.8</td><td>Score computed server-side</td><td>Sum of the 8 answers, recomputed from stored answers.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.9</td><td>A client-supplied score is ignored</td><td>POST a forged <code>totalScore</code> → the stored score still equals the sum of answers.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.10</td><td>Band boundaries, all eight</td><td>0 and 6 → Low · 7 and 12 → Moderate · 13 and 18 → High · 19 and 24 → Very high.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.11</td><td>Link is single-use</td><td>Submit, then reopen the same link → “already used” screen, not a second submission.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.12</td><td>Concurrent double-submit writes one completion</td><td>Two simultaneous POSTs → 1 completion and 8 answers, not 16. Enforced by a unique index.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.13</td><td>Link expires exactly 7 days after sending</td><td><code>expiresAt = sentAt + 7d</code>; an expired token is refused.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">3.14</td><td>Invalid, expired and used links each get a distinct screen</td><td>Three different messages, none revealing whether the token ever existed.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">3.15</td><td>Status tracked <code>sent → completed | expired</code></td><td>Visible per assessment on the patient page.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.16</td><td>Assessment history shows on the patient page</td><td>Sent date, status, completed date, score /24, band.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">3.17</td><td>The public form is usable on a phone</td><td>375px: full-width tap targets, no sideways scroll.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<div class="pagebreak"></div>
+
+<h3>4 · CSV lab import — the area the brief says it will attack</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">4.1</td><td>Template downloads from inside the app</td><td>“Download template” returns a CSV <strong>byte-identical</strong> to the supplied <code>lab-results-template.csv</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.2</td><td>The supplied clean sample imports 10/10</td><td>On a fresh database, all ten rows accepted.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.3</td><td>Re-uploading the same file creates zero duplicates</td><td>Second upload: 0 accepted, 0 rejected, 10 “already imported”. Row count stays 10.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.4</td><td>Partial import — valid rows land even when others fail</td><td>Messy file imports its good rows and explains every other outcome.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.5</td><td>Per-row report says <em>why</em></td><td>Every rejected row names its reason and its real file line number.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.6</td><td>Unknown MRN rejected</td><td>Row naming a patient that does not exist.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.7</td><td>Malformed date rejected</td><td><code>2026-13-45</code>, <code>not-a-date</code>.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.8</td><td>Future collected date rejected</td><td>Explicitly named in the brief.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.9</td><td>Non-numeric value rejected</td><td><code>abc</code>, empty, <code>--</code>.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.10</td><td>Missing required field rejected</td><td>Required = <code>mrn</code>, <code>collected_date</code>, <code>test_code</code>, <code>value</code>.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.11</td><td>Unknown test code rejected</td><td>Anything outside <code>GLU-F</code>, <code>HBA1C</code>, <code>SBP</code>.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.12</td><td>Duplicate within one file</td><td>Same MRN + date + test twice in the same upload → one import, one reported duplicate.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.13</td><td>Duplicate against rows already on file</td><td>Reported as “already imported”, which is <strong>not</strong> an error.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.14</td><td>Same key, different value → skipped and reported</td><td>Never silently overwrites a stored measurement (D-CSV-2).</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.15</td><td>BOM, CRLF, quoted fields, ragged rows all parse</td><td>Including a <strong>short first data row</strong>, which previously rejected whole files.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.16</td><td>Cosmetic mismatch warns, does not reject</td><td>Different <code>test_name</code> or a broken reference range imports with a flag.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.17</td><td>Mismatched unit stored as reported, never relabelled</td><td><code>5.8 mmol/L</code> stays <code>mmol/L</code> and is flagged (D-CSV-5).</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.18</td><td>Wrong file type fails cleanly</td><td><code>.txt</code> upload → 415, a readable message, no stack trace.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.19</td><td>Wrong columns fail cleanly</td><td>CSV missing required headers → 422 naming what is missing.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">4.20</td><td>Empty file / header-only file</td><td>Told there are no data rows; not a crash and not a silent success.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">4.21</td><td>Oversized file refused</td><td>Above the 2 MB limit → refused with a clear message.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">4.22</td><td>Import appears immediately on the patient’s charts</td><td>Upload, open the patient → the new points are plotted.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <p><strong>Build one deliberately ugly file before submitting</strong> and keep it in the repo.
+  The brief says it will test with one. It should contain, in a single file: a BOM, CRLF line endings,
+  a short first data row, a quoted field containing a comma, a blank line mid-file, an unknown MRN,
+  a future date, a malformed date, a non-numeric value, an unknown test code, a within-file duplicate,
+  a row already on file, a mismatched unit, and an inverted reference range. Then check the report
+  explains all of them and still imports the valid rows.</p>
+</div>
+
+<h3>5 · Dashboards — patient view</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">5.1</td><td>Glucose trend over time</td><td>Required by the brief by name.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">5.2</td><td>HbA1c trend over time</td><td>Required by the brief by name.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">5.3</td><td>Questionnaire score history</td><td>DSMA-8 total over time, 0–24 axis.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">5.4</td><td>Chronology is correct</td><td>Numeric time axis: a back-dated result must not double the line back on itself, and a year’s gap must not look like a day’s.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">5.5</td><td>A single reading still renders</td><td>Zero-width domain is padded so the marker does not vanish. Every brand-new patient hits this.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">5.6</td><td>Units and reference ranges shown</td><td>mg/dL, %, mmHg with the range stated.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">5.7</td><td>Tooltips work on hover</td><td>Brief asks for “proper time-series charts with sensible axes”.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">5.8</td><td>A patient with no data looks intentional</td><td>Create a fresh patient → designed empty states, not four broken boxes.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">5.9</td><td>Values are reachable without hovering</td><td>A lab table accompanies the charts, for keyboard and touch users.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6 · Dashboards — clinic view</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">6.1</td><td>Total patients</td><td>Matches <code>SELECT count(*) FROM patients</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.2</td><td>Assessment completion rate</td><td>completed ÷ all sent, all time. Currently 88% = 7 of 8.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.3</td><td>Completion rate with a zero denominator</td><td>Shows <code>—</code>, never <code>0%</code>, when nothing has been sent.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">6.4</td><td>Patients per risk band</td><td>Each patient counted <strong>once</strong>, by their latest completed assessment.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.5</td><td>Band counts sum to the patient total</td><td>Including a “No assessment” bucket.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.6</td><td>Aggregates verified by hand against the data</td><td>Named in the Definition of Done. Jane has a High-risk assessment in her history yet High reads 0 — proof it counts patients, not assessments.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.7</td><td>Recent uploads panel</td><td>Filename, imported / rejected / already-on-file counts, timestamp.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">6.8</td><td>At least one working filter</td><td>Date range: 7 / 30 / 90 days / all time actually changes the rows.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">6.9</td><td>Risk bands distinguishable without colour</td><td>Every band carries its own label and number; no two fills touch.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<div class="pagebreak"></div>
+
+<h3>7 · States, responsiveness and accessibility</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">7.1</td><td>Empty database looks intentional</td><td>Called out in the brief. Test on a database with zero patients — the hardest state to get right.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.2</td><td>Loading states on every async panel</td><td>Throttle the network and watch each panel: skeletons, not layout jumps.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.3</td><td>Error states</td><td>Stop the database and load a page → a readable error, not a stack trace.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.4</td><td>Usable at 375px</td><td>Zero horizontal overflow on every page. Verified in Chrome across six pages at 375 and 1280.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">7.5</td><td>No text truncated by a fixed-width container</td><td>Check at 1280px too — a <code>truncate</code> hides text at every width, not just mobile.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">7.6</td><td>Charts render in a real browser</td><td>Recharts draws client-side; SSR and jsdom cannot verify this. Headless Chrome can.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">7.7</td><td>Dates render on the correct calendar day everywhere</td><td>List, detail, charts, CSV report, upload timestamps.</td><td class="st"><span class="pill auto">AUTOMATED</span></td></tr>
+    <tr><td class="id">7.8</td><td>Keyboard navigation through a form</td><td>Tab order sensible; focus visible; the questionnaire completable without a mouse.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">7.9</td><td>404 for a patient id that does not exist</td><td><code>/patients/does-not-exist</code> → a designed not-found page.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+  </tbody>
+</table>
+
+<h3>8 · Security and privacy</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">8.1</td><td>No secret anywhere in git history</td><td><code>git log --all -p | grep &lt;value&gt;</code> for every real value in <code>.env</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.2</td><td>No secret in the client bundle</td><td>Nothing sensitive behind <code>NEXT_PUBLIC_</code>; grep the built JS for the API key.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">8.3</td><td>No patient data in logs</td><td>Ids and counts only — never names, emails, MRNs, answers or tokens.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.4</td><td>No sensitive data in URLs</td><td>The assessment token is the deliberate exception and is the access grant itself.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.5</td><td>Parameterized queries throughout</td><td>Prisma everywhere; no string-built SQL.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.6</td><td>Authorization checked server-side on every mutation</td><td>Not just hidden UI and not just the edge proxy.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.7</td><td>Only fabricated data</td><td>No real patient anywhere, including in fixtures and screenshots.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.8</td><td><code>.env</code> is gitignored and never committed</td><td>Confirm <code>git ls-files .env</code> is empty.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">8.9</td><td>No HIPAA or GDPR compliance claimed</td><td>Good practice is not compliance; the README says so explicitly.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<h3>9 · Documentation and repository</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">9.1</td><td>Setup runnable in under 10 minutes</td><td><strong>Clone into a clean directory and follow the README literally</strong> — the only honest test.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">9.2</td><td>Architecture diagram present and renders on GitHub</td><td>Mermaid — check it renders on the GitHub page, not just locally.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">9.3</td><td>ERD present and renders on GitHub</td><td>Same check.</td><td class="st"><span class="pill todo">TO TEST</span></td></tr>
+    <tr><td class="id">9.4</td><td>“Decisions &amp; tradeoffs” section</td><td>15 numbered decisions, each stating what it gives up.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">9.5</td><td>Git history incremental and meaningful</td><td>14 PRs, merge commits, never squashed, branches kept.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">9.6</td><td>Test suite green</td><td><code>npm test</code> → 188 passing.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">9.7</td><td>Lint clean</td><td><code>npm run lint</code> → no output.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+    <tr><td class="id">9.8</td><td>Production build succeeds</td><td><code>npm run build</code>.</td><td class="st"><span class="pill ver">VERIFIED</span></td></tr>
+  </tbody>
+</table>
+
+<h3>10 · Deployment — blocked on the Vercel account</h3>
+<table>
+  <thead><tr><th class="id">#</th><th style="width:40%">Check</th><th>How to test / expected</th><th class="st">Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">10.1</td><td>App is live on a Vercel URL</td><td>“Required, not optional.”</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+    <tr><td class="id">10.2</td><td>Migrations run against the production database</td><td>Build command <code>prisma migrate deploy &amp;&amp; next build</code>.</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+    <tr><td class="id">10.3</td><td>Seed run in production so the evaluator’s login exists</td><td>Definition of Done: “the evaluator’s test account is valid.”</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+    <tr><td class="id">10.4</td><td><code>APP_BASE_URL</code> set to the deployed origin</td><td>Otherwise emailed assessment links point at <code>localhost</code>.</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+    <tr><td class="id">10.5</td><td>No Postgres connection exhaustion under clicking</td><td>Pooled URL at runtime; watch for intermittent 500s.</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+    <tr><td class="id">10.6</td><td>Re-run this entire checklist against the live URL</td><td>Local passing does not imply deployed passing.</td><td class="st"><span class="pill block">BLOCKED</span></td></tr>
+  </tbody>
+</table>
+
+<div class="callout stop">
+  <p><strong>The highest-value untested item is 9.1.</strong> Everything else is a feature check;
+  9.1 is the one an evaluator performs <em>first</em>, on a machine that is not yours, and a README that
+  only works because your environment already has something set up will fail in front of them.
+  Clone into an empty directory with a fresh database and follow your own instructions literally.</p>
+</div>
+
+<div class="callout">
+  <p><strong>Two things to remember while testing.</strong> Sending an assessment adds a row and moves
+  the headline completion rate off the documented 88% — delete it afterwards. And the demo database
+  should end as: 3 patients, 8 assessments (7 completed, 1 expired), 10 lab results.</p>
+</div>
+
+<footer class="doc">
+  PulseTrack · Tier 1 acceptance checklist · generated 2026-08-24 ·
+  sources: <code>candidate-brief.md</code>, <code>questionnaire-dsma8.json</code>,
+  <code>lab-results-template.csv</code>, <code>01-challenge-analysis.md</code> §19
+</footer>
+
+</body>
+</html>
