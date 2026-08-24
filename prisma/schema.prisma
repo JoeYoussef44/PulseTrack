@@ -106,6 +106,9 @@ model Patient {
   labResults  LabResult[]
 
   @@index([fullName])
+  /// The push queue's own lookup: "which patients are waiting to be reported".
+  /// Without it every sync batch is a sequential scan of the register.
+  @@index([fhirSyncStatus])
   @@map("patients")
 }
 
@@ -209,5 +212,8 @@ model LabResult {
   /// hold when two uploads run at the same moment.
   @@unique([patientId, collectedDate, testCode])
   @@index([patientId, testCode, collectedDate])
+  /// Same reason as on Patient. A CSV import can queue thousands of rows, and
+  /// the sync endpoint reads this filter once per batch.
+  @@index([fhirSyncStatus])
   @@map("lab_results")
 }

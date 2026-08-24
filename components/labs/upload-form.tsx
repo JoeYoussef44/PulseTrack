@@ -39,6 +39,8 @@ interface Outcome {
   filename: string;
   report: Report;
   note?: string;
+  /** Rows now queued for the national platform. Absent when FHIR is unset. */
+  queuedForFhir?: number;
 }
 
 const STATUS_LABEL: Record<RowStatus, string> = {
@@ -218,6 +220,22 @@ export function UploadForm() {
             ) : null}
 
             {outcome.note ? <Alert tone="info">{outcome.note}</Alert> : null}
+
+            {outcome.queuedForFhir ? (
+              <Alert tone="info">
+                {outcome.queuedForFhir}{" "}
+                {outcome.queuedForFhir === 1 ? "result is" : "results are"} queued
+                for the national platform.{" "}
+                <a
+                  href="/integrations/fhir"
+                  className="font-medium text-accent hover:underline"
+                >
+                  Send them now
+                </a>
+                . They are pushed as a batch rather than during the import, so a
+                slow or unavailable platform never delays this report.
+              </Alert>
+            ) : null}
 
             <div className="flex flex-wrap gap-1">
               {(["all", "rejected", "skipped", "accepted"] as const).map((f) => {
