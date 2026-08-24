@@ -87,7 +87,7 @@ export type PatientInput = z.infer<typeof patientSchema>;
  * 2026-13-01. Date parsing silently rolls these over, so the round-trip
  * comparison is what actually catches them.
  */
-function isRealCalendarDate(value: string): boolean {
+export function isRealCalendarDate(value: string): boolean {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
 
