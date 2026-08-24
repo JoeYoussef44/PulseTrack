@@ -8,7 +8,13 @@ reconstruct it from diffs.
 
 ---
 
-## Session 2 — 2026-08-24 (Mon) — repo published, history restructured
+## Session 2 — 2026-08-24 (Mon) — repo published, Tier 1 finished
+
+**Phases 4 and 5 complete; Tier 1 is feature-complete.** Ten merged PRs, test
+suite 85 → 188. What remains is the README and the deployment.
+
+The session had three parts: publishing the repo as a feature-branch history,
+building the CSV importer, and building the dashboards. Each is below.
 
 ### B1 cleared — the diagnosis in session 1 was wrong
 
@@ -172,12 +178,32 @@ never seen**. Same for 375px usability. Both need a browser before submission.
 
 Test suite 151 → 188.
 
+### What this session got wrong, and how it was caught
+
+Worth recording as a pattern, because all four were the same shape — something
+that looked right and was not, caught only by running it:
+
+| Caught by | What it was |
+|---|---|
+| A test written before the UI | Header inferred from row one's keys, so a short first data row rejected the whole file |
+| `curl` on the endpoint | `/api/labs/upload` returned 307 to `/login`, so an expired session rendered an empty report instead of an error |
+| Running the colour validator | Moderate↔high risk bands at ΔE 0.4 under deuteranopia — the same colour |
+| Re-reading the brief against the work | The clinic view's required "recent uploads with at least one filter" was missing entirely |
+
+None would have been found by reasoning about the code. Three of the four
+produced a *plausible* wrong answer rather than an error, which is the class of
+defect this project is actually being judged on.
+
 ### Left undone
 
 **Tier 1 is feature-complete.** What remains is the README — one of the six
 graded areas, still the create-next-app default — and the deployment.
 **B2 (Vercel) is still the only open blocker**, and the README does not depend
 on it.
+
+Two things were built but **never seen by anyone**: the plotted charts (Recharts
+draws client-side, and no browser tooling was available) and the app at 375px.
+Both are graded. Recorded in `state.md` §1a.
 
 ---
 
