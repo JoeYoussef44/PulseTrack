@@ -24,7 +24,12 @@ async function RecentUploads() {
   }
 
   return (
-    <div className="-mx-5 overflow-x-auto sm:mx-0">
+    // Plain overflow container, no negative margin: the parent Card supplies no
+    // horizontal padding, so a -mx-5 here has nothing to cancel and pulls the
+    // table 20px outside the card on each side -- breaking the card border and
+    // scrolling the whole page sideways at 375px. The -mx-5 in upload-form.tsx
+    // is correct because its parent there is a px-5 wrapper.
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[40rem] border-collapse text-sm">
         <thead>
           <tr className="border-b border-rule text-left text-xs text-muted">

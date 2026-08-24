@@ -139,7 +139,7 @@ export function RiskDistribution({
           key={segment.label}
           className="grid grid-cols-[9.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[11rem_1fr_5rem]"
         >
-          <dt className="truncate text-sm text-ink-2">
+          <dt className="text-sm text-ink-2">
             {segment.label}
             {segment.label === NO_ASSESSMENT ? (
               <span className="ml-1 text-xs text-muted">· not surveyed</span>
