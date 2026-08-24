@@ -13,23 +13,94 @@ export interface PatientFormState {
   errors?: Record<string, string>;
   /** Anything that is not attributable to one field. */
   message?: string;
+  /**
+   * What the clinician actually typed, echoed back on failure.
+   *
+   * React resets an uncontrolled form once its action resolves, so without
+   * this a rejected submission clears all six fields and the clinician retypes
+   * everything to fix one of them. The reset lands on `defaultValue`, so
+   * feeding these back through it is what preserves the input.
+   */
+  values?: Record<string, string>;
 }
 
 /** Prisma's unique-constraint violation. */
 const UNIQUE_VIOLATION = "P2002";
 
-function fieldErrors(error: unknown): Record<string, string> | null {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (error.code === UNIQUE_VIOLATION) {
-      const target = error.meta?.target;
-      const fields = Array.isArray(target) ? target : [String(target ?? "")];
+/**
+ * The column names a P2002 refers to, across the two shapes Prisma 7 emits.
+ *
+ * With the classic query engine the list is `meta.target`. With a **driver
+ * adapter** — which Prisma 7 makes mandatory, and we use `@prisma/adapter-pg` —
+ * `meta.target` is `undefined` and the list moves to
+ * `meta.driverAdapterError.cause.constraint.fields`.
+ *
+ * Reading only `target` finds nothing, silently, so the caller falls through
+ * and rethrows: a duplicate MRN then crashed the whole page instead of marking
+ * one field. Verified against the live database — the real payload is
+ * `{"modelName":"Patient","driverAdapterError":{"cause":{"originalCode":"23505",
+ * "constraint":{"fields":["mrn"]}}}}`.
+ *
+ * Both shapes are read, so this keeps working if the adapter changes again.
+ */
+function uniqueViolationFields(
+  error: Prisma.PrismaClientKnownRequestError,
+): string[] {
+  const meta = error.meta as Record<string, unknown> | undefined;
+  if (!meta) return [];
 
-      if (fields.some((f) => String(f).includes("mrn"))) {
-        return { mrn: "A patient with this MRN already exists." };
-      }
-    }
+  const target = meta.target;
+  if (Array.isArray(target)) return target.map(String);
+  if (typeof target === "string") return [target];
+
+  const fields = (
+    meta.driverAdapterError as
+      | { cause?: { constraint?: { fields?: unknown } } }
+      | undefined
+  )?.cause?.constraint?.fields;
+
+  if (Array.isArray(fields)) return fields.map(String);
+  if (typeof fields === "string") return [fields];
+
+  return [];
+}
+
+/**
+ * Turns a unique-constraint violation into something a clinician can act on.
+ *
+ * The unique index is the real guarantee — an application-level "does this MRN
+ * exist?" check would still lose a race between two simultaneous submissions —
+ * so this translates the database's answer rather than trying to pre-empt it.
+ */
+function uniqueViolationState(error: unknown): PatientFormState | null {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return null;
+  if (error.code !== UNIQUE_VIOLATION) return null;
+
+  const fields = uniqueViolationFields(error);
+
+  if (fields.some((f) => f.toLowerCase().includes("mrn"))) {
+    return { errors: { mrn: "A patient with this MRN already exists." } };
   }
-  return null;
+
+  // A duplicate we could not attribute to a field is still a duplicate. Saying
+  // so is worse than a precise message and far better than a crash — and the
+  // other unique column, fhirPatientId, is not something a clinician typed.
+  return {
+    message: "That patient conflicts with one already on file.",
+  };
+}
+
+/** The raw submission, as strings, for echoing back on a failed attempt. */
+function rawValues(formData: FormData): Record<string, string> {
+  const keys = ["fullName", "mrn", "dateOfBirth", "sex", "email", "phone"];
+  const out: Record<string, string> = {};
+
+  for (const key of keys) {
+    const value = formData.get(key);
+    if (typeof value === "string") out[key] = value;
+  }
+
+  return out;
 }
 
 function readForm(formData: FormData) {
@@ -53,9 +124,10 @@ export async function createPatient(
   await requireClinician();
 
   const parsed = patientSchema.safeParse(readForm(formData));
+  const submitted = rawValues(formData);
 
   if (!parsed.success) {
-    return { errors: flattenZodErrors(parsed.error) };
+    return { errors: flattenZodErrors(parsed.error), values: submitted };
   }
 
   const data = parsed.data;
@@ -75,10 +147,8 @@ export async function createPatient(
     });
     patientId = created.id;
   } catch (error) {
-    // The unique index is the real guarantee — an application-level "does this
-    // MRN exist" check would still lose a race between two submissions.
-    const errors = fieldErrors(error);
-    if (errors) return { errors };
+    const state = uniqueViolationState(error);
+    if (state) return { ...state, values: submitted };
     throw error;
   }
 
@@ -95,9 +165,10 @@ export async function updatePatient(
   await requireClinician();
 
   const parsed = patientSchema.safeParse(readForm(formData));
+  const submitted = rawValues(formData);
 
   if (!parsed.success) {
-    return { errors: flattenZodErrors(parsed.error) };
+    return { errors: flattenZodErrors(parsed.error), values: submitted };
   }
 
   const data = parsed.data;
@@ -115,8 +186,8 @@ export async function updatePatient(
       },
     });
   } catch (error) {
-    const errors = fieldErrors(error);
-    if (errors) return { errors };
+    const state = uniqueViolationState(error);
+    if (state) return { ...state, values: submitted };
 
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

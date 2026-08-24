@@ -54,6 +54,15 @@ export function PatientForm({
 
   const err = (field: string) => state.errors?.[field];
 
+  /**
+   * What each input should fall back to. React resets an uncontrolled form once
+   * its action resolves, and the reset lands on `defaultValue` — so echoing the
+   * rejected submission back through here is what stops a clinician losing all
+   * six fields because one of them was wrong.
+   */
+  const val = (field: keyof PatientFormValues) =>
+    state.values?.[field] ?? defaults?.[field];
+
   return (
     <form action={formAction} className="flex flex-col gap-5">
       {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
@@ -64,7 +73,7 @@ export function PatientForm({
             <Input
               id="fullName"
               name="fullName"
-              defaultValue={defaults?.fullName}
+              defaultValue={val("fullName")}
               required
               autoComplete="off"
               invalid={Boolean(err("fullName"))}
@@ -81,7 +90,7 @@ export function PatientForm({
           <Input
             id="mrn"
             name="mrn"
-            defaultValue={defaults?.mrn}
+            defaultValue={val("mrn")}
             required
             placeholder="MRN-1004"
             autoComplete="off"
@@ -99,17 +108,24 @@ export function PatientForm({
             id="dateOfBirth"
             name="dateOfBirth"
             type="date"
-            defaultValue={defaults?.dateOfBirth}
+            defaultValue={val("dateOfBirth")}
             required
             invalid={Boolean(err("dateOfBirth"))}
           />
         </Field>
 
         <Field label="Sex" htmlFor="sex" error={err("sex")}>
+          {/*
+            React applies `defaultValue` to a <select> only when it mounts, so
+            unlike the text inputs this one would still reset to "Select…" after
+            a rejected submission. Keying it on the echoed value remounts it
+            when — and only when — that value actually changes.
+          */}
           <Select
+            key={val("sex") ?? "unset"}
             id="sex"
             name="sex"
-            defaultValue={defaults?.sex ?? ""}
+            defaultValue={val("sex") ?? ""}
             required
             invalid={Boolean(err("sex"))}
           >
@@ -134,7 +150,7 @@ export function PatientForm({
             id="email"
             name="email"
             type="email"
-            defaultValue={defaults?.email}
+            defaultValue={val("email")}
             autoComplete="off"
             invalid={Boolean(err("email"))}
           />
@@ -145,7 +161,7 @@ export function PatientForm({
             <Input
               id="phone"
               name="phone"
-              defaultValue={defaults?.phone}
+              defaultValue={val("phone")}
               placeholder="+961 3 111 001"
               autoComplete="off"
               invalid={Boolean(err("phone"))}
