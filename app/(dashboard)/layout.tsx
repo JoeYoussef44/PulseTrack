@@ -35,7 +35,7 @@ export default async function DashboardLayout({
             PulseTrack
           </Link>
 
-          <nav className="order-3 -mx-1 flex w-full gap-1 overflow-x-auto sm:order-none sm:mx-0 sm:w-auto">
+          <nav className="order-3 -mx-1 flex w-full flex-wrap gap-1 sm:order-none sm:mx-0 sm:w-auto sm:flex-nowrap">
             {NAV.map((item) => (
               <Link
                 key={item.href}
