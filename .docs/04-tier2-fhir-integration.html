@@ -1,0 +1,1001 @@
+<title>Reporting to the National Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+
+<style>
+  /* Same design system as 02-project-overview.html and the Tier 1 acceptance
+     checklist — these three are one document family and should read as a set.
+     Additions for this document are marked below. */
+  :root{
+    --paper:#F5F7F6;
+    --surface:#FFFFFF;
+    --surface-2:#EBF0EE;
+    --ink:#0F1A17;
+    --ink-2:#31423C;
+    --muted:#63756E;
+    --rule:#D3DDD8;
+    --rule-strong:#AFBEB8;
+    --accent:#0A5A6B;
+    --accent-soft:#E0EEF1;
+    --band-low:#2F7D53;   --band-low-f:#E3F0E8;
+    --band-mod:#9C7817;   --band-mod-f:#F5EDD8;
+    --band-high:#BA5F1D;  --band-high-f:#F8E8DB;
+    --band-vhigh:#AC3028; --band-vhigh-f:#F7E2E0;
+
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1210;
+      --surface:#131C19;
+      --surface-2:#1A2521;
+      --ink:#E8EFEC;
+      --ink-2:#B9C8C2;
+      --muted:#8A9D96;
+      --rule:#26332E;
+      --rule-strong:#3E4E48;
+      --accent:#63C8DC;
+      --accent-soft:#11313A;
+      --band-low:#63C08A;   --band-low-f:#16281F;
+      --band-mod:#D3AF4E;   --band-mod-f:#2A2415;
+      --band-high:#E08C52;  --band-high-f:#2C2016;
+      --band-vhigh:#E36A60; --band-vhigh-f:#2E1B19;
+    }
+  }
+
+  :root[data-theme="dark"]{
+    --paper:#0B1210;
+    --surface:#131C19;
+    --surface-2:#1A2521;
+    --ink:#E8EFEC;
+    --ink-2:#B9C8C2;
+    --muted:#8A9D96;
+    --rule:#26332E;
+    --rule-strong:#3E4E48;
+    --accent:#63C8DC;
+    --accent-soft:#11313A;
+    --band-low:#63C08A;   --band-low-f:#16281F;
+    --band-mod:#D3AF4E;   --band-mod-f:#2A2415;
+    --band-high:#E08C52;  --band-high-f:#2C2016;
+    --band-vhigh:#E36A60; --band-vhigh-f:#2E1B19;
+  }
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:clamp(28px,5vw,72px) clamp(20px,5vw,56px) 96px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+
+  /* ---------- masthead ---------- */
+  .mast{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    padding-bottom:34px;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font-family:var(--serif);
+    font-size:clamp(42px,7vw,68px);
+    line-height:1.02;
+    font-weight:500;
+    letter-spacing:-.015em;
+    text-wrap:balance;
+    margin:0;
+  }
+  h1 .sub{
+    display:block;
+    font-size:clamp(17px,2.4vw,23px);
+    line-height:1.42;
+    color:var(--ink-2);
+    font-weight:400;
+    margin-top:18px;
+    max-width:34em;
+  }
+  .facts{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:20px 28px;
+    margin-top:8px;
+  }
+  .fact dt{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .fact dd{
+    margin:0;
+    font-size:14.5px;
+    color:var(--ink);
+  }
+
+  /* ---------- sections ---------- */
+  section{
+    padding-top:52px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  h2{
+    font-family:var(--serif);
+    font-size:clamp(26px,3.6vw,36px);
+    line-height:1.14;
+    font-weight:500;
+    letter-spacing:-.01em;
+    margin:0;
+    text-wrap:balance;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--rule);
+  }
+  h2 .tag{
+    display:block;
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:500;
+    margin-bottom:12px;
+  }
+  h3{
+    font-family:var(--sans);
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:-.005em;
+    margin:14px 0 0;
+  }
+  p{margin:0;max-width:68ch}
+  .lede{font-size:17.5px;color:var(--ink-2);max-width:64ch}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  em{font-style:italic;color:var(--ink-2)}
+
+  ul.plain{margin:0;padding-left:1.1em;max-width:68ch;display:flex;flex-direction:column;gap:9px}
+  ul.plain li::marker{color:var(--rule-strong)}
+
+  code{
+    font-family:var(--mono);
+    font-size:.86em;
+    background:var(--surface-2);
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  /* ---------- capability grid ---------- */
+  .caps{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(232px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  /* A three-item grid must never wrap to two columns: the parent's rule colour
+     shows through the unfilled cell as a bare grey block. Three across, or one. */
+  .caps.three{grid-template-columns:repeat(3,1fr)}
+  @media (max-width:600px){
+    .caps.three{grid-template-columns:1fr}
+  }
+  .cap{
+    background:var(--surface);
+    padding:20px 22px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .cap .n{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--accent);
+    letter-spacing:.1em;
+  }
+  .cap h3{margin:0;font-size:15.5px}
+  .cap p{font-size:14px;color:var(--ink-2);line-height:1.55}
+
+  /* ---------- figures ---------- */
+  figure.fig{
+    margin:14px 0 6px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:26px clamp(16px,3vw,30px) 22px;
+  }
+  .scroller{overflow-x:auto;}
+  svg.d{
+    display:block;
+    width:100%;
+    min-width:560px;
+    height:auto;
+    color:var(--ink-2);
+    font-family:var(--mono);
+  }
+  figcaption{
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--muted);
+    max-width:70ch;
+    border-top:1px solid var(--rule);
+    padding-top:13px;
+  }
+  figcaption b{color:var(--ink-2);font-weight:500}
+
+  /* svg primitives */
+  .bx{fill:var(--surface-2);stroke:var(--rule-strong);stroke-width:1}
+  .bx-o{fill:none;stroke:var(--rule-strong);stroke-width:1}
+  .bx-d{fill:none;stroke:var(--rule-strong);stroke-width:1;stroke-dasharray:4 4}
+  .bx-a{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1}
+  .ln{stroke:currentColor;stroke-width:1.3;fill:none}
+  .ln-d{stroke:var(--rule-strong);stroke-width:1.3;fill:none;stroke-dasharray:5 5}
+  .ln-a{stroke:var(--accent);stroke-width:1.5;fill:none}
+  .ln-x{stroke:var(--band-vhigh);stroke-width:1.5;fill:none}
+  .fill-a{fill:var(--accent)}
+  .fill-x{fill:var(--band-vhigh)}
+  .fill-ink{fill:var(--ink-2)}
+  .dot{fill:var(--ink);stroke:none}
+  .t-ti{font-size:13px;font-weight:500;fill:var(--ink)}
+  .t-su{font-size:10px;fill:var(--muted)}
+  .t-lb{font-size:10px;fill:var(--muted)}
+  .t-lba{font-size:10px;fill:var(--accent)}
+  .t-lbx{font-size:10px;fill:var(--band-vhigh)}
+  .t-ey{font-size:10.5px;letter-spacing:.12em;fill:var(--muted)}
+  .t-bd{font-size:12px;font-weight:500}
+  .t-rg{font-size:12.5px;fill:var(--ink)}
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
+  th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:500;
+    background:var(--surface-2);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  td.code{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+
+  /* Retry / no-retry marks, so the column reads at a glance rather than
+     needing every row read. */
+  .yn{font-family:var(--mono);font-size:11px;letter-spacing:.04em;white-space:nowrap}
+  .yn.y{color:var(--band-low)}
+  .yn.n{color:var(--muted)}
+
+  /* ---------- callout ---------- */
+  .note{
+    border-left:2px solid var(--accent);
+    background:var(--accent-soft);
+    padding:16px 20px;
+    border-radius:0 4px 4px 0;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .note .nh{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);
+  }
+  .note p{font-size:14.5px;color:var(--ink-2);max-width:66ch}
+
+  /* ---------- ADDED for this document ---------- */
+
+  /* Terminal transcripts. Every measurement quoted in this document is real
+     output, and it is set apart from prose so it reads as evidence. */
+  .probe{
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-left:2px solid var(--rule-strong);
+    border-radius:0 4px 4px 0;
+    padding:15px 18px;
+    overflow-x:auto;
+  }
+  .probe pre{
+    margin:0;
+    font-family:var(--mono);
+    font-size:12.5px;
+    line-height:1.62;
+    color:var(--ink-2);
+    white-space:pre;
+  }
+  .probe .cmd{color:var(--muted)}
+  .probe .ok{color:var(--band-low)}
+  .probe .bad{color:var(--band-vhigh)}
+  .probe .hl{color:var(--ink);font-weight:500}
+  .probe-cap{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:9px;
+  }
+
+  /* Two-panel comparison: the wrong way beside the right way. */
+  .vs{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .vs > div{
+    background:var(--surface);
+    padding:18px 20px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+  }
+  .vs .vh{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+  }
+  .vs .bad .vh{color:var(--band-vhigh)}
+  .vs .good .vh{color:var(--band-low)}
+  .vs p{font-size:14px;color:var(--ink-2);max-width:46ch}
+  .vs .snip{
+    font-family:var(--mono);
+    font-size:12px;
+    line-height:1.55;
+    background:var(--surface-2);
+    border-radius:3px;
+    padding:9px 11px;
+    overflow-x:auto;
+    white-space:pre;
+    color:var(--ink);
+  }
+
+  /* Before/after measurement pairs. */
+  .meas{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .meas .m{
+    background:var(--surface);
+    padding:18px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .meas .ml{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  .meas .mv{
+    font-family:var(--mono);
+    font-variant-numeric:tabular-nums;
+    font-size:22px;
+    letter-spacing:-.01em;
+    display:flex;
+    align-items:baseline;
+    gap:9px;
+  }
+  .meas .was{color:var(--muted);text-decoration:line-through;font-size:15px}
+  .meas .now{color:var(--band-low);font-weight:500}
+  .meas .mn{font-size:13px;color:var(--ink-2);line-height:1.5;margin-top:3px}
+
+  /* ---------- talking points ---------- */
+  .tp{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  .tp .row{background:var(--surface);padding:16px 20px;display:flex;flex-direction:column;gap:5px}
+  .tp .q{font-size:15px;font-weight:600}
+  .tp .a{font-size:14px;color:var(--ink-2);max-width:74ch}
+
+  footer{
+    margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:11px;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:6px 22px;
+  }
+
+  @media print{
+    body{background:#fff}
+    .wrap{padding:0;max-width:none}
+    section{padding-top:26px}
+    .mast{break-after:avoid}
+    h2{break-after:avoid;break-inside:avoid}
+    h3{break-after:avoid}
+    figure.fig{break-inside:avoid}
+    .note,.tbl-wrap,.cap,.tp .row,.probe,.vs > div,.meas .m{break-inside:avoid}
+    /* On screen a long transcript line scrolls. On paper there is no
+       scrollbar, so it would simply be cut off — wrap instead of losing it. */
+    .probe pre,.vs .snip{white-space:pre-wrap}
+    p,li{orphans:3;widows:3}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">Capadev engineering challenge &middot; Tier 2 explained</div>
+    <h1>Reporting to the National Platform
+      <span class="sub">How PulseTrack exchanges data with a shared FHIR R4 server &mdash; and the three things its own API guide gets wrong about it, each of which fails silently.</span>
+    </h1>
+    <dl class="facts">
+      <div class="fact"><dt>Standard</dt><dd>FHIR R4 &mdash; <code>Patient</code> and <code>Observation</code> only.</dd></div>
+      <div class="fact"><dt>Shared with</dt><dd>Every other candidate. Reads are open; writes are not.</dd></div>
+      <div class="fact"><dt>Moves</dt><dd>Both ways. 14 resources pushed, 180 observations pulled.</dd></div>
+      <div class="fact"><dt>Undo</dt><dd>None. <code>DELETE</code> is disabled &mdash; every write is permanent.</dd></div>
+    </dl>
+  </header>
+
+  <!-- ============ 1. WHAT THE TIER IS ============ -->
+  <section>
+    <h2><span class="tag">The task</span>A clinic that has to report to somebody else's database</h2>
+
+    <p class="lede">Tier 1 built a clinic that keeps its own records. Tier 2 connects it to a national health data platform &mdash; a server the clinic does not own, cannot delete from, and shares with every other organisation reporting to it.</p>
+
+    <p>That last sentence is the whole engineering problem. A private database is forgiving: a mistake can be corrected, a duplicate removed, a bad write rolled back. None of that is true here. The server is a <strong>HAPI FHIR R4</strong> instance standing in for a national platform, and it enforces the constraints a real one would.</p>
+
+    <div class="caps">
+      <div class="cap">
+        <div class="n">Reads</div>
+        <h3>Open to everyone</h3>
+        <p>Any organisation can search any record. A resource being <em>visible</em> says nothing about whether it may be modified.</p>
+      </div>
+      <div class="cap">
+        <div class="n">Writes</div>
+        <h3>Only what you created</h3>
+        <p>The server stamps every resource with its creator's tag. Attempting to change somebody else's earns a <code>403</code>, permanently.</p>
+      </div>
+      <div class="cap">
+        <div class="n">Deletes</div>
+        <h3>Disabled entirely</h3>
+        <p>There is no undo. A duplicate created by a careless sync stays on the national platform for good.</p>
+      </div>
+      <div class="cap">
+        <div class="n">Budget</div>
+        <h3>120 requests a minute</h3>
+        <p>Shared across everything the deployment does. Handling <code>429</code> is named in the brief as part of the exercise.</p>
+      </div>
+    </div>
+
+    <p>The brief asks for four things: <strong>push</strong> patients and lab results as they are entered, <strong>pull</strong> the platform's own historical data for five seeded patients, <strong>handle the realities</strong> of an external API &mdash; authentication, failures, retries, and not importing the same thing twice &mdash; and <strong>document the data flow</strong>. All four are built.</p>
+
+    <div class="note">
+      <div class="nh">The rule everything else follows from</div>
+      <p>Deletes being disabled is not a detail to work around; it is the constraint that determines the design. It is why every write is a conditional create rather than a plain one, why ownership is verified from the server's own response rather than inferred, and why the mapping and reconciliation logic is written as pure functions &mdash; those are the only parts of this integration that can be exercised freely, because testing them costs nothing and cannot leave anything behind.</p>
+    </div>
+  </section>
+
+  <!-- ============ 2. THE SHAPE ============ -->
+  <section>
+    <h2><span class="tag">The shape</span>Two directions, one table</h2>
+
+    <p>Data moves both ways, and the two directions are asymmetric in a way that matters. What we push, we own and may revise. What we pull belongs to the platform and is read-only to us. Both end up in the same two tables, which is what lets a clinician see imported history and locally-entered results on one chart.</p>
+
+    <figure class="fig">
+      <div class="scroller">
+        <svg class="d" viewBox="0 0 800 340" role="img" aria-label="Data flow between PulseTrack and the national platform. Patients and CSV-imported lab results are pushed as Patient and Observation resources; five seeded patients and 180 observations are pulled back into the same tables, distinguished by a source column.">
+
+          <!-- left: PulseTrack -->
+          <rect class="bx-o" x="24" y="52" width="286" height="236" rx="4"/>
+          <text class="t-ey" x="42" y="76">PULSETRACK</text>
+          <rect class="bx" x="42" y="92" width="250" height="42" rx="3"/>
+          <text class="t-rg" x="56" y="112">patients</text>
+          <text class="t-su" x="56" y="126">mrn · name · dob · sex · fhirPatientId</text>
+
+          <rect class="bx" x="42" y="146" width="250" height="66" rx="3"/>
+          <text class="t-rg" x="56" y="166">lab_results</text>
+          <text class="t-su" x="56" y="180">value · date · testCode</text>
+          <text class="t-su" x="56" y="192">fhirObservationId</text>
+          <text class="t-lba" x="56" y="204">source = CSV | FHIR</text>
+
+          <rect class="bx-d" x="42" y="224" width="250" height="46" rx="3"/>
+          <text class="t-su" x="56" y="242">fhirSyncStatus · fhirLastError</text>
+          <text class="t-su" x="56" y="256">a sync is a state on the row, never</text>
+          <text class="t-su" x="56" y="266">a reason to fail the write</text>
+
+          <!-- right: platform -->
+          <rect class="bx-o" x="530" y="52" width="246" height="236" rx="4"/>
+          <text class="t-ey" x="548" y="76">NATIONAL PLATFORM</text>
+          <text class="t-su" x="548" y="92">HAPI FHIR R4 · shared</text>
+
+          <rect class="bx-a" x="548" y="106" width="210" height="60" rx="3"/>
+          <text class="t-rg" x="562" y="126">ours</text>
+          <text class="t-su" x="562" y="140">4 Patient · 10 Observation</text>
+          <text class="t-lba" x="562" y="154">tagged cand-joe-l · writable</text>
+
+          <rect class="bx" x="548" y="178" width="210" height="60" rx="3"/>
+          <text class="t-rg" x="562" y="198">seeded</text>
+          <text class="t-su" x="562" y="212">5 Patient · 180 Observation</text>
+          <text class="t-su" x="562" y="226">tagged cand-admin · read-only</text>
+
+          <text class="t-su" x="548" y="262">other candidates' records — visible,</text>
+          <text class="t-su" x="548" y="274">never touched</text>
+
+          <!-- push arrow -->
+          <line class="ln-a" x1="316" y1="122" x2="518" y2="122"/>
+          <polygon class="fill-a" points="530,122 516,117 516,127"/>
+          <text class="t-lba" x="417" y="106" text-anchor="middle">PUSH</text>
+          <text class="t-su" x="417" y="140" text-anchor="middle">POST + If-None-Exist</text>
+          <text class="t-su" x="417" y="152" text-anchor="middle">one request per record</text>
+
+          <!-- pull arrow -->
+          <line class="ln" x1="518" y1="212" x2="322" y2="212"/>
+          <polygon class="fill-ink" points="310,212 324,207 324,217"/>
+          <text class="t-ey" x="417" y="196" text-anchor="middle">PULL</text>
+          <text class="t-su" x="417" y="230" text-anchor="middle">GET, paged</text>
+          <text class="t-su" x="417" y="242" text-anchor="middle">3 requests per patient</text>
+
+          <!-- never -->
+          <line class="ln-x" x1="330" y1="300" x2="500" y2="300" stroke-dasharray="5 5"/>
+          <line class="ln-x" x1="408" y1="290" x2="422" y2="310"/>
+          <text class="t-lbx" x="417" y="326" text-anchor="middle">pulled data is never pushed back</text>
+        </svg>
+      </div>
+      <figcaption>Both directions land in the same two tables. <b>The <code style="background:none;padding:0">source</code> column is what makes that safe</b> &mdash; it is how a chart can mix the two, and how the push queue knows to exclude the 180 rows that came from the platform in the first place.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ============ 3. THE TRAP ============ -->
+  <section>
+    <h2><span class="tag">Finding 1 &middot; ownership</span>The API guide's own example would have bound us to a stranger's record</h2>
+
+    <p class="lede">This is the finding that shaped the implementation, and it was found before a line of client code was written &mdash; by reading the server instead of trusting the guide.</p>
+
+    <p>FHIR's idiomatic way to make a create idempotent is a <strong>conditional create</strong>: <code>POST</code> the resource with an <code>If-None-Exist</code> header carrying a search query. If the search matches, the server returns the existing record instead of making a second one. The guide gives this example:</p>
+
+    <div class="probe">
+      <pre><span class="cmd">POST /Patient</span>
+If-None-Exist: identifier=https://challenge.capadev.dev/mrn|<span class="hl">MRN-1001</span></pre>
+    </div>
+
+    <p><code>MRN-1001</code> is the medical record number printed in the supplied CSV template &mdash; so every candidate who seeds their database from the sample data creates a patient with it. Since writes are permanent, the sensible first move was a read-only query rather than a write:</p>
+
+    <div class="probe">
+      <div class="probe-cap">Read-only probe, before any write</div>
+      <pre><span class="cmd">$ GET /Patient?identifier=https://challenge.capadev.dev/mrn|MRN-1001</span>
+
+total = <span class="bad">5</span>
+  id=189  tag=cand-jihane-l
+  id=265  tag=cand-maryamhmayed-l
+  id=278  tag=cand-marwa-l
+  id=340  tag=cand-adham-l
+  id=360  tag=cand-khalils-l</pre>
+    </div>
+
+    <p>Five other organisations already hold that MRN. The guide's header matches all five, and a conditional create whose search matches more than one resource returns <code>412</code>.</p>
+
+    <p>But the <em>worse</em> outcome is the one that nearly happened to everybody who follows the guide literally. Had the search matched exactly <strong>one</strong> foreign resource &mdash; which is only a question of how many other candidates had reached that MRN first &mdash; the server would have returned somebody else's resource id, we would have stored it as our own, and every later update to that patient would have earned a permanent <code>403</code>. A failure that looks exactly like a bug in our own code.</p>
+
+    <div class="vs">
+      <div class="bad">
+        <div class="vh">As the guide writes it</div>
+        <div class="snip">If-None-Exist:
+  identifier=…|MRN-1001</div>
+        <p>Searches <strong>every</strong> organisation's records, because reads are open. Matches five foreign resources &rarr; <code>412</code>. Match exactly one and it silently binds us to a record we can never write to.</p>
+      </div>
+      <div class="good">
+        <div class="vh">As PulseTrack sends it</div>
+        <div class="snip">If-None-Exist:
+  identifier=…|MRN-1001
+  &amp;_tag=…/tags|cand-joe-l</div>
+        <p>Scopes idempotency to <strong>our own</strong> records. <code>_tag</code> is a standard search parameter, and conditional creates accept arbitrary search parameters, so this is idiomatic FHIR rather than a workaround.</p>
+      </div>
+    </div>
+
+    <p>Whether HAPI honours <code>_tag</code> <em>inside</em> that header was the open question. The five-way collision turned it into a clean experiment rather than a hopeful one: if <code>_tag</code> were ignored, the search would still match five and the server would answer <code>412</code>. It answered <code>201</code>.</p>
+
+    <div class="probe">
+      <div class="probe-cap">The first write, and the second</div>
+      <pre><span class="cmd">$ POST /Patient   (tag-scoped)</span>
+<span class="ok">HTTP/1.1 201 Created</span>
+Location: http://hapi:8080/fhir/Patient/<span class="hl">816</span>/_history/1
+"tag": [{ "system": ".../tags", "code": "cand-joe-l" }]
+
+<span class="cmd">$ POST /Patient   (identical request)</span>
+<span class="ok">HTTP/1.1 200 OK</span>
+Location: http://hapi:8080/fhir/Patient/<span class="hl">816</span>/_history/1</pre>
+    </div>
+
+    <p><code>201</code> then <code>200</code>, same id, no duplicate. Two open questions closed in about four minutes, and the answer changed the design rather than confirming it.</p>
+
+    <h3>Belt and braces</h3>
+
+    <p>Scoping the search is not quite enough on its own. After any create-or-match, PulseTrack reads the <strong>server's own <code>meta.tag</code></strong> on the response and only treats the resource as writable if our organisation's tag is present. Ownership is asked of the server, never inferred from our request having succeeded &mdash; because the cost of being wrong is a write that cannot be undone.</p>
+
+    <div class="note">
+      <div class="nh">Two smaller traps in the same two responses</div>
+      <p>The <code>Location</code> header carries the server's <strong>internal container hostname</strong>, <code>hapi:8080</code>, so it must be parsed and never fetched. And the resource id is the segment <strong>before</strong> <code>_history</code>, not the last one &mdash; reading the last segment stores the version number <code>1</code> as the resource id, and every later write goes to a record that does not exist.</p>
+    </div>
+  </section>
+
+  <!-- ============ 4. PAGINATION ============ -->
+  <section>
+    <h2><span class="tag">Finding 2 &middot; pagination</span>The guide says to follow the <code>next</code> link. The <code>next</code> link does not work</h2>
+
+    <p>The platform holds twelve months of monthly results for five seeded patients. Fetching them means following a paged search &mdash; and the guide's instruction to <em>"follow the bundle's <code>next</code> link"</em> cannot be carried out as written.</p>
+
+    <figure class="fig">
+      <div class="scroller">
+        <svg class="d" viewBox="0 0 800 262" role="img" aria-label="The next link returned by the server points at an internal Docker host and fails when fetched. PulseTrack keeps the link's path and query, which carry the server's opaque cursor, and re-bases them onto the configured public host.">
+
+          <text class="t-ey" x="24" y="26">WHAT THE SERVER RETURNS</text>
+          <rect class="bx" x="24" y="38" width="752" height="34" rx="3"/>
+          <text class="t-bd" x="40" y="60" fill="var(--band-vhigh)">http://hapi:8080</text>
+          <text class="t-rg" x="182" y="60">/fhir?_getpages=c9b366f6-…&amp;_getpagesoffset=20&amp;_count=20</text>
+
+          <text class="t-lbx" x="40" y="90">unreachable host</text>
+          <text class="t-su" x="182" y="90">the server's opaque cursor — never rebuilt by hand</text>
+
+          <line class="ln-d" x1="96" y1="98" x2="96" y2="126"/>
+          <line class="ln-d" x1="420" y1="98" x2="420" y2="126"/>
+
+          <!-- discard / keep -->
+          <rect class="bx-o" x="24" y="126" width="150" height="30" rx="3" stroke="var(--band-vhigh)"/>
+          <text class="t-lbx" x="99" y="146" text-anchor="middle">discard the origin</text>
+          <rect class="bx-o" x="300" y="126" width="240" height="30" rx="3" stroke="var(--accent)"/>
+          <text class="t-lba" x="420" y="146" text-anchor="middle">keep the path and query exactly</text>
+
+          <line class="ln-a" x1="420" y1="156" x2="420" y2="174"/>
+          <polygon class="fill-a" points="420,186 415,172 425,172"/>
+
+          <text class="t-ey" x="24" y="204">WHAT PULSETRACK REQUESTS</text>
+          <rect class="bx-a" x="24" y="212" width="752" height="34" rx="3"/>
+          <text class="t-bd" x="40" y="234" fill="var(--accent)">https://fhir-challenge.vihagent.net</text>
+          <text class="t-rg" x="302" y="234">/fhir?_getpages=c9b366f6-…&amp;_getpagesoffset=20&amp;_count=20</text>
+        </svg>
+      </div>
+      <figcaption><b>The failure this prevents is a silent one.</b> Fetching <code style="background:none;padding:0">hapi:8080</code> from outside the cluster simply fails, so an import that follows the link verbatim stops after its first page &mdash; and reports success. A truncated import is worse than a failed one, because nothing about it looks wrong.</figcaption>
+    </figure>
+
+    <h3>And a page size chosen so the code actually runs</h3>
+
+    <p>The guide suggests <code>_count=50</code>. Each seeded patient has exactly <strong>36</strong> observations &mdash; so at 50, every patient returns in a single page, no <code>next</code> link is ever emitted, and the pagination code never executes once. It would be an integration that <em>looks</em> paginated and has never paginated.</p>
+
+    <p>PulseTrack requests <code>_count=20</code>, which pages every patient twice &mdash; 20 then 16. The per-patient import report prints the page count for exactly this reason:</p>
+
+    <div class="probe">
+      <div class="probe-cap">The seeded import, run against the live server</div>
+      <pre><span class="cmd">all five: found=true created=true updated=0 merged=0 conflicts=0</span>
+
+MRN-2001: imported=<span class="hl">36</span>  pages=<span class="ok">2</span>  truncated=false  skipped=[]  (2360ms)
+MRN-2002: imported=<span class="hl">36</span>  pages=<span class="ok">2</span>  truncated=false  skipped=[]  (2232ms)
+MRN-2003: imported=<span class="hl">36</span>  pages=<span class="ok">2</span>  truncated=false  skipped=[]  (2569ms)
+MRN-2004: imported=<span class="hl">36</span>  pages=<span class="ok">2</span>  truncated=false  skipped=[]  (2560ms)
+MRN-2005: imported=<span class="hl">36</span>  pages=<span class="ok">2</span>  truncated=false  skipped=[]  (2150ms)
+
+labs:     <span class="hl">180</span> source=FHIR  ·  10 source=CSV
+patients: 5 EXTERNAL_SEED  ·  4 OWNED</pre>
+    </div>
+
+    <p>Three further rules govern the walk, each guarding a way a cursor loop against someone else's server can misbehave. It stops if a cursor points back at a page already read. It caps the number of pages. And it <strong>reports truncation</strong> rather than hiding it. Loop control depends on the presence of a <code>next</code> link and nothing else &mdash; <code>bundle.total</code> is present on an unpaged search and <em>absent</em> on a paged one, so counting against it never terminates.</p>
+  </section>
+
+  <!-- ============ 5. IDEMPOTENCY ============ -->
+  <section>
+    <h2><span class="tag">The requirement</span>Running it twice changes nothing</h2>
+
+    <p class="lede">"Not re-importing the same data twice" is one of the brief's four Tier 2 requirements. On a server with no delete, it is also the requirement with no second chance.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:27%">Do this twice</th><th style="width:30%">Guarantee</th><th>How</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Push a patient</td>
+            <td>No duplicate remote <code>Patient</code></td>
+            <td>Tag-scoped <code>If-None-Exist</code> on the MRN identifier. The second call returns <code>200</code> and the same id.</td>
+          </tr>
+          <tr>
+            <td>Push a lab result</td>
+            <td>No duplicate remote <code>Observation</code></td>
+            <td>Keyed on the local row's <strong>cuid</strong>, not on anything shared. An MRN is common vocabulary; a cuid is ours alone, so the match is exact even though reads are open to everyone.</td>
+          </tr>
+          <tr>
+            <td>Retry after a lost response</td>
+            <td>Still no duplicate</td>
+            <td>Exactly why every write is a conditional create rather than a plain <code>POST</code>: the retry's own search finds whatever the lost response created.</td>
+          </tr>
+          <tr>
+            <td>Import the seeded data</td>
+            <td>No duplicate local rows, and no writes at all</td>
+            <td>Patients upserted by unique <code>mrn</code>; observations matched by unique <code>fhirObservationId</code>, then by <code>(patient, date, test)</code>.</td>
+          </tr>
+          <tr>
+            <td>Fail mid-sync</td>
+            <td>No local data loss</td>
+            <td>The local commit is a separate step from the sync, which only ever records a status on the row.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Measured rather than asserted &mdash; the resource counts on the platform, taken before and after a complete re-push:</p>
+
+    <div class="probe">
+      <div class="probe-cap">Re-push, counted at the source</div>
+      <pre><span class="cmd">BEFORE</span>  Patients=<span class="hl">4</span>   Observations=<span class="hl">10</span>
+
+  batch: {"patientsPushed":4,"resultsPushed":0,"failed":0,
+          "more":false,"remaining":0}
+
+<span class="cmd">AFTER </span>  Patients=<span class="hl">4</span>   Observations=<span class="hl">10</span>
+
+<span class="cmd">re-import, each of the five patients</span>
+  imported=0  updated=0  <span class="ok">unchanged=36</span>  merged=0</pre>
+    </div>
+
+    <h3>The collision that makes this harder than it looks</h3>
+
+    <p>Two unique constraints can disagree about the same observation. One says <em>one local row per resource on the platform</em> (<code>fhirObservationId</code>). The other says <em>one local row per measurement</em> (<code>patient + date + test</code>). They collide whenever a lab result already entered from a CSV describes the measurement the platform is now reporting &mdash; and letting the second constraint throw would fail an entire import over one row that is not even wrong.</p>
+
+    <p>The decision is made by a pure function, which is the point: every branch of it is tested in milliseconds instead of by uploading a CSV and then importing against a server whose writes are permanent. Three outcomes:</p>
+
+    <div class="caps three">
+      <div class="cap">
+        <div class="n">imported</div>
+        <h3>New to us</h3>
+        <p>The platform holds a measurement we have never seen. Written with <code>source = FHIR</code>.</p>
+      </div>
+      <div class="cap">
+        <div class="n">updated</div>
+        <h3>Already linked</h3>
+        <p>The platform owns this row and is the authority on it, so a revised value is taken. Identical values are not rewritten at all.</p>
+      </div>
+      <div class="cap">
+        <div class="n">merged</div>
+        <h3>Already held locally</h3>
+        <p>The link is attached and <strong>the stored value is not touched</strong>. Where the two disagree, that is counted and shown.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <div class="nh">Why a merge never overwrites</div>
+      <p>Silently editing a clinician's record because a remote resource happens to share a date is how a clinical system stops being trustworthy. Resolving the disagreement automatically would mean choosing a winner without a clinician, which is not ours to choose &mdash; so PulseTrack shows the conflict instead. It is also the same rule a re-uploaded CSV row already follows: a changed value is reported, never silently applied.</p>
+    </div>
+  </section>
+
+  <!-- ============ 6. FAILURES ============ -->
+  <section>
+    <h2><span class="tag">The realities</span>Which failures are worth retrying, and which are facts</h2>
+
+    <p>The distinction that governs the whole error layer is <strong>transient versus terminal</strong>. A <code>403</code> is not a failure to retry &mdash; it is a permanent fact about ownership, and retrying it spends a 120-per-minute budget re-learning it. Treating every non-2xx as "try again" is how a sync queue stops draining.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:12%">Status</th><th style="width:14%">Retried</th><th>What it means, and what the clinician sees</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code">400 · 422</td><td><span class="yn n">no</span></td><td>Our resource is malformed. The server's own <code>diagnostics</code> is shown; retrying would send the same bad resource again.</td></tr>
+          <tr><td class="code">401</td><td><span class="yn n">no</span></td><td>Surfaced as <em>"check <code>FHIR_API_KEY</code>"</em> &mdash; named as the thing to fix, not as "unauthorized".</td></tr>
+          <tr><td class="code">403</td><td><span class="yn n">no</span></td><td>Recorded as a <strong>state</strong>, not an error, and excluded from the queue so it can actually drain. Listed on the integration page with the server's explanation.</td></tr>
+          <tr><td class="code">404</td><td><span class="yn n">no</span></td><td>The linked resource is gone.</td></tr>
+          <tr><td class="code">405</td><td><span class="yn n">no</span></td><td>We issued a disabled operation &mdash; a delete, a conditional update, an update-as-create. A programming error, and one worth failing loudly.</td></tr>
+          <tr><td class="code">412</td><td><span class="yn n">no</span></td><td>A conditional create matched more than one resource. Surfaced for inspection &mdash; this is the status the guide's own example produces.</td></tr>
+          <tr><td class="code">429</td><td><span class="yn y">yes</span></td><td>Honours the server's <code>Retry-After</code> when it sends one, else exponential backoff <strong>with jitter</strong>.</td></tr>
+          <tr><td class="code">5xx · timeout</td><td><span class="yn y">yes</span></td><td>Up to three attempts with backoff. The request may have been received, which is why every write is idempotent.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Verified by breaking it deliberately &mdash; pointing the client at a wrong key, then at a host that does not resolve, then back. The <em>timings</em> are the evidence, not the messages:</p>
+
+    <div class="probe">
+      <div class="probe-cap">Failure paths, run against the real client</div>
+      <pre><span class="cmd">== wrong API key -&gt; 401 ==</span>
+  error : "The national platform rejected our credentials.
+           Check FHIR_API_KEY."
+  stored: FAILED | Missing or invalid X-API-Key header.
+  link  : 816 kept | <span class="hl">1218ms</span>  <span class="cmd">&lt;- one attempt, no retry</span>
+
+<span class="cmd">== unreachable host -&gt; network ==</span>
+  error : "Could not reach the national platform."
+  link  : 817 kept | <span class="hl">4302ms</span>  <span class="cmd">&lt;- three attempts, backoff</span>
+
+<span class="cmd">== recovery on the real server ==</span>
+  result: <span class="ok">{"ok":true,"fhirId":"818","created":false}</span>
+  stored: SYNCED | no error</pre>
+    </div>
+
+    <p>1.2 seconds is one attempt. 4.3 seconds is three with backoff. Both kept the resource link, so recovery was a matter of the platform coming back rather than of re-establishing anything.</p>
+
+    <h3>Rate limiting is handled before it happens</h3>
+
+    <p>Reacting to a <code>429</code> is necessary but not sufficient. A seeded import is three requests per patient and a push is one per record, so importing and then syncing a CSV can put a few hundred requests through in under a minute. An unthrottled client earns the limit rather than avoiding it &mdash; and every retry then lands the run further behind. PulseTrack holds a sliding window at <strong>100 requests a minute</strong> against the documented 120, with at most four in flight, leaving the margin that absorbs a burst of retries instead of converting it into more of them.</p>
+
+    <div class="note">
+      <div class="nh">The integration can fail without the clinic failing</div>
+      <p>Patient CRUD and the CSV importer reach the platform through a single seam. Neither imports the FHIR client, neither handles a FHIR error, and neither can be broken by one. The local write always commits first, so an outage never rolls back a clinical record and never blocks data entry &mdash; it leaves a visible sync state on the row instead. With no FHIR key configured at all, the whole of Tier 1 still runs and the integration page says plainly which variables are missing.</p>
+    </div>
+  </section>
+
+  <!-- ============ 7. BATCHING ============ -->
+  <section>
+    <h2><span class="tag">The deployment</span>Why the work is done in batches the browser drives</h2>
+
+    <p>A Vercel Hobby function stops at 60 seconds, and both directions of this integration are naturally larger than that. Doing either in one request is the shape that works on a laptop and times out on the deployed URL &mdash; in front of the person evaluating it, with no explanation.</p>
+
+    <div class="caps three">
+      <div class="cap">
+        <div class="n">push</div>
+        <h3>A bounded batch, looped</h3>
+        <p>One request per record, and a CSV can hold thousands of rows. <code>/api/fhir/sync</code> pushes a fixed slice and reports whether more remain; the browser calls it until the queue drains.</p>
+      </div>
+      <div class="cap">
+        <div class="n">pull</div>
+        <h3>One patient per request</h3>
+        <p>Each patient is three requests and 36 rows. Per-patient means a patient that fails does not take the other four with it, and the report can say what happened to <em>that</em> patient.</p>
+      </div>
+      <div class="cap">
+        <div class="n">exception</div>
+        <h3>A patient syncs inline</h3>
+        <p>Bounded at six seconds, because the brief asks for a patient to sync <em>when they are created</em>. If the budget lapses the record is already queued, so nothing is lost.</p>
+      </div>
+    </div>
+
+    <p>The loops also give the interface something honest to show &mdash; a count going down, a row per patient &mdash; rather than a spinner of unknown length. Each stops on three explicit conditions: the queue drains, the server reports it made no progress, or a hard cap is reached. A retry loop against an external service needs a stop condition that does not depend on that service behaving.</p>
+  </section>
+
+  <!-- ============ 8. PERFORMANCE ============ -->
+  <section>
+    <h2><span class="tag">Our own finding &middot; cost</span>Idempotent is not the same as cheap</h2>
+
+    <p class="lede">Both directions were idempotent on the first attempt. Both were also quietly heading for a function timeout, and neither would have failed a test.</p>
+
+    <p>The re-runs produced perfect results &mdash; identical resource counts, zero new rows. What they did not produce was acceptable timings, and that only became visible because the runs were timed rather than merely checked.</p>
+
+    <div class="meas">
+      <div class="m">
+        <div class="ml">Push · 14 records</div>
+        <div class="mv"><span class="was">12.8s</span><span class="now">3.2s</span></div>
+        <div class="mn">Pushed one at a time, so the concurrency cap of four was decorative &mdash; nothing ever ran concurrently. A fifth of the function budget spent waiting.</div>
+      </div>
+      <div class="m">
+        <div class="ml">Re-import · per patient</div>
+        <div class="mv"><span class="was">10s</span><span class="now">2.1s</span></div>
+        <div class="mn">180 unchanged rows written back one at a time, inside a transaction whose own timeout is 20 seconds. Linked rows are now compared before being written.</div>
+      </div>
+    </div>
+
+    <p>The second fix has a side benefit worth naming: because an unchanged row is no longer rewritten, <strong>"updated" now means something a clinician can read</strong> &mdash; the platform revised this result &mdash; rather than being a count of rows we happened to touch.</p>
+
+    <h3>And fixing the first one introduced a real bug</h3>
+
+    <p>Making the push concurrent created a race that the sequential version could not have. An <code>Observation</code> whose patient is not yet linked pushes that patient itself &mdash; so two results for the same unlinked patient issue two conditional creates whose <em>searches both complete before either insert lands</em>. Both find nothing. Both create. That is a duplicate <code>Patient</code> on a server where <code>DELETE</code> is disabled.</p>
+
+    <p>The fix is ordering rather than locking: every referenced patient is linked <strong>before</strong> any observation is sent, which removes the race by construction rather than relying on losing it. Re-verified afterwards &mdash; still 4 patients and 10 observations under our tag, across three further re-pushes.</p>
+
+    <div class="note">
+      <div class="nh">The general lesson</div>
+      <p>A correct result and a survivable one are two different tests. Both sync directions passed every correctness check while sitting at a fraction of a function budget that real data volume would have exhausted. Timing a run that has already passed is a cheap check that nothing else performs.</p>
+    </div>
+  </section>
+
+  <!-- ============ 9. WHAT WAS VERIFIED ============ -->
+  <section>
+    <h2><span class="tag">Evidence</span>What was actually checked, and how</h2>
+
+    <p>Every number in this document is output from a run, not an estimate. The integration was exercised three ways, because each catches something the others do not.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:23%">Checked by</th><th>What it established</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>264 unit tests</strong></td>
+            <td>The mapping in both directions, that <code>400/401/403/404/405/412/422</code> are never retried while <code>429/5xx/timeout</code> are, <code>Retry-After</code> handling, the throttle's ceiling and concurrency cap, and every branch of the import's two-constraint reconciliation &mdash; including that a locally-held value is never overwritten. These carry more weight than usual here: the mappers and the reconciler are the only parts of this integration that can be exercised without writing to a server that has no undo.</td>
+          </tr>
+          <tr>
+            <td><strong>Runs against the live server</strong></td>
+            <td>The conditional-create behaviour, the tag scoping, pagination over two real pages per patient, 180 observations imported, identical counts across repeated pushes and imports, and the three failure paths with their timings.</td>
+          </tr>
+          <tr>
+            <td><strong>A headless browser</strong></td>
+            <td>Both loops driven through their own buttons &mdash; five <code>200</code>s from the import endpoint, per-patient progress &mdash; the pulled data confirmed <em>on the rendered charts</em> rather than inferred from row counts, no layout overflow at 1280px or 375px, and the API key absent from the page HTML.</td>
+          </tr>
+          <tr>
+            <td><strong>A secret scan</strong></td>
+            <td>After a production build: the key appears in <strong>0</strong> files under the client bundle and <strong>0</strong> commits in git history. The client module and its config carry <code>server-only</code>, so an import from a browser component is a build error rather than a leaked credential.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <div class="nh">One probe lied, again</div>
+      <p>The first browser test of the push button reported that no API call had been made. It had &mdash; the probe closed <strong>12.7 seconds</strong> into a request that took 12.8, and the server log settled it in one line. A probe that stops before the thing it is measuring proves nothing, and a green-looking check that never reached the code under test is worse than no check at all.</p>
+    </div>
+  </section>
+
+  <!-- ============ 10. LIMITS ============ -->
+  <section>
+    <h2><span class="tag">Honesty</span>What this integration does not do</h2>
+
+    <p>Each of these is a deliberate trade rather than an oversight, and each has a cost that is worth stating rather than discovering on a call.</p>
+
+    <ul class="plain">
+      <li><strong>The sync is inline and queued, not an outbox with a background worker.</strong> A real system would commit an event alongside the local write and drain it from a job runner, which survives a deployment mid-sync and needs no browser tab open. That needs infrastructure this submission does not have, and it would give the clinician nothing to watch.</li>
+      <li><strong>A patient's name is split by guessing.</strong> We store one <code>fullName</code> because the brief asks for one; FHIR wants a family name and given names. The last whitespace-separated token becomes the family name, which is wrong for "van der Berg" and for cultures that put the family name first. The guess is made in one place, where it can be seen and corrected.</li>
+      <li><strong>Contact details are deliberately not sent.</strong> Email and phone would map cleanly to FHIR <code>telecom</code>, and they are omitted anyway: the server is shared and reads are open, so every field pushed is readable by every other organisation on it. The integration needs identity and demographics to link observations; it does not need a way to contact the patient.</li>
+      <li><strong>A local and remote disagreement is shown, not resolved.</strong> When an imported measurement contradicts one already on file, both remain and the conflict is counted. Picking a winner is a clinical judgement.</li>
+      <li><strong>Deleting a patient locally leaves an orphan on the platform.</strong> The server disables <code>DELETE</code>, so there is nothing to call. This is documented rather than hidden.</li>
+      <li><strong>The import has not yet run from the deployed URL.</strong> Every measurement here is local. The per-patient timings suggest the 60-second ceiling is comfortable, but that is a prediction, and this project's own history is a list of predictions that a measurement disproved.</li>
+    </ul>
+  </section>
+
+  <!-- ============ 11. TALKING POINTS ============ -->
+  <section>
+    <h2><span class="tag">The call</span>Questions this design invites</h2>
+
+    <div class="tp">
+      <div class="row">
+        <div class="q">Why not use a FHIR client library?</div>
+        <div class="a">Because an SDK hides precisely the behaviour being evaluated. Conditional creates, ownership tags, pagination cursors and <code>OperationOutcome</code> parsing are the exercise; delegating them would mean answering questions about a dependency rather than about a decision. The whole client is a few hundred lines and every rule in it can be explained.</div>
+      </div>
+      <div class="row">
+        <div class="q">What happens if the server stops honouring <code>_tag</code> in <code>If-None-Exist</code>?</div>
+        <div class="a">The conditional create would match a foreign resource or nothing, and would create a second copy of each patient rather than failing loudly. That is exactly why <code>meta.tag</code> is verified on every response instead of being trusted once: a resource that comes back without our tag is recorded as not ours and never written to.</div>
+      </div>
+      <div class="row">
+        <div class="q">Why is a lab result keyed on a cuid rather than on the measurement itself?</div>
+        <div class="a">Because the identifier has to be unique across every organisation on a shared server, and a natural key is not. Patient plus date plus test code collides with any other candidate reporting the same seeded patient; a cuid is unique by construction. It is the same reasoning that made the MRN unsafe as an idempotency key.</div>
+      </div>
+      <div class="row">
+        <div class="q">A push failed. What happened to the lab result?</div>
+        <div class="a">It is in the record, with a visible sync state and the server's own explanation. Local writes commit first and the sync is a separate recorded step, so a failure never rolls anything back. Transient failures re-queue; a <code>403</code> is listed as refused rather than retried, because the platform will keep giving the same answer.</div>
+      </div>
+      <div class="row">
+        <div class="q">How do you know the re-import really writes nothing?</div>
+        <div class="a">Two ways, deliberately independent. The reconciliation function is pure and a test asserts that 36 already-linked observations produce zero creates, zero links and zero updates. And the live re-run reports <code>unchanged=36</code> per patient at 2.1 seconds &mdash; the timing being the corroboration, since 180 writes could not complete that fast.</div>
+      </div>
+      <div class="row">
+        <div class="q">What would you change with more time?</div>
+        <div class="a">An outbox and a background worker instead of browser-driven batches; structured patient names rather than one field; and a reconciliation view that lets a clinician resolve a local-versus-remote disagreement in the interface rather than only seeing that one exists.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>PulseTrack &middot; Tier 2 explained</span>
+    <span>Companion to <code style="background:none;padding:0">02-project-overview.html</code> and the Tier 1 acceptance checklist</span>
+    <span>Every figure is measured output</span>
+    <span>Fabricated data only</span>
+  </footer>
+
+</div>

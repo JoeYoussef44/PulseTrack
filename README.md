@@ -546,8 +546,10 @@ recovery            : {"ok":true,"fhirId":"818","created":false}  →  SYNCED
 ```
 
 Rate limiting is also handled **proactively**. Reacting to a `429` is necessary
-but not sufficient: a seed import is roughly 15 requests per patient, so an
-unthrottled client earns the limit rather than avoiding it. `throttle.ts` holds a
+but not sufficient: a seed import is three requests per patient and a push is
+one per record, so importing and then syncing a CSV can put a few hundred
+requests through in under a minute — an unthrottled client earns the limit
+rather than avoiding it. `throttle.ts` holds a
 sliding window at 100/min against the documented 120, with a concurrency cap of
 4, leaving headroom for the retries.
 

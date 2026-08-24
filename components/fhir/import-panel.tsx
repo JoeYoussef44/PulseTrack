@@ -9,8 +9,8 @@ import { Alert, Badge, Button, Card, CardHeader, cx } from "@/components/ui";
 /**
  * Imports the platform's seeded patients, one per request, from the browser.
  *
- * The loop is here for the same reason the push loop is: each patient carries
- * 36 observations across three pages, and five of them in one function
+ * The loop is here for the same reason the push loop is: each patient is three
+ * requests to the platform and 36 rows, and five of them in one function
  * invocation is the most likely thing in this app to hit Vercel's 60-second
  * ceiling. Per-patient also means the row for MRN-2003 can say what happened
  * to MRN-2003, which a single aggregate count cannot.

@@ -52,6 +52,15 @@ blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
 
 ---
 
+### 1b. The Tier 2 explainer
+
+`.docs/04-tier2-fhir-integration.html` and its rendered PDF explain the FHIR
+integration the way `02-project-overview.html` explains the product: the
+ownership trap with the probe output quoted, the pagination findings, the
+idempotency guarantees, the failure policy, the performance findings, and what
+the integration deliberately does not do. Written for a reader who has not seen
+the code — it is the document to hand someone before a walkthrough call.
+
 ### 1a. The acceptance checklist is now the authority on QA
 
 `.docs/03-tier1-acceptance-checklist.html` and its rendered PDF are the
@@ -490,4 +499,5 @@ Joe's to unblock or is pre-submission work.**
 
 Deeper context: `.docs/01-challenge-analysis.md` (requirements matrix, security
 analysis, evaluator edge cases), `.docs/03-tier1-acceptance-checklist.html`
-(the QA plan) and `.docs/candidate-brief.md` (the authority on scope).
+(the QA plan), `.docs/04-tier2-fhir-integration.html` (Tier 2 explained) and
+`.docs/candidate-brief.md` (the authority on scope).

@@ -9,13 +9,13 @@ import { SEED_MRNS } from "@/lib/fhir/systems";
 /**
  * Imports one seeded patient's history from the national platform.
  *
- * **One MRN per request.** Five patients at 36 observations each is roughly 15
- * requests to the platform plus a few hundred database writes; doing all five
+ * **One MRN per request.** Each patient is three requests to the platform — a
+ * search plus two pages of observations — and 36 rows written; doing all five
  * in one invocation is the single most likely thing in this app to meet
- * Vercel's 60-second function ceiling, and the failure mode there is a half
- * -finished import with no report. Per-patient, the client loops, one patient
- * failing does not take the others with it, and progress is real rather than a
- * spinner.
+ * Vercel's 60-second function ceiling, and the failure mode there is a
+ * half-finished import with no report. Per-patient, the client loops, one
+ * patient failing does not take the others with it, and progress is real
+ * rather than a spinner.
  */
 
 export const runtime = "nodejs";
