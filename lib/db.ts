@@ -21,7 +21,24 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const adapter = new PrismaPg({ connectionString });
+  // Pool settings, not defaults, for two reasons that both bite in practice.
+  //
+  // connectionTimeoutMillis: Neon's free tier scales compute to zero after a
+  // few minutes idle. The next connection has to cold-start it, which measured
+  // ~3s here and can be slower. With a short timeout that first request fails
+  // with P1001 "Can't reach database server" while the database is in fact
+  // perfectly healthy — the second request then succeeds, which makes it look
+  // random. An evaluator opening a link we sent days earlier hits exactly this,
+  // so the wait is generous.
+  //
+  // max: a serverless function gets its own pool, so a small per-instance cap
+  // is what stops concurrent invocations exhausting Postgres connection slots.
+  const adapter = new PrismaPg({
+    connectionString,
+    connectionTimeoutMillis: 15_000,
+    idleTimeoutMillis: 10_000,
+    max: 5,
+  });
 
   return new PrismaClient({
     adapter,
