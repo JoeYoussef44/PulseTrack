@@ -1,13 +1,14 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-24**, session 2.
+> Last updated: **2026-08-24**, session 2 (phases 4 and 5).
 
 ---
 
 ## 1. Where we are
 
-**Phase 4 of 12 complete.** Tier 1 is roughly 70% done.
+**Phase 5 of 12 complete.** Tier 1 is feature-complete; only the README and
+the live deployment remain.
 
 | Phase | Status |
 |---|---|
@@ -16,12 +17,12 @@
 | 2 · Patient CRUD | ✅ Complete |
 | 3 · Assessment flow | ✅ Complete |
 | 4 · CSV importer | ✅ Complete |
-| **5 · Dashboards + charts** | ⬜ **NEXT** |
-| 6 · **Tier 1 gate** — deploy + QA | ⬜ Blocked on Vercel |
+| 5 · Dashboards + charts | ✅ Complete |
+| **6 · Tier 1 gate** — deploy + QA | ⬜ **NEXT** — blocked on Vercel (B2) |
 | 7 · FHIR client + push | ⬜ Not started |
 | 8 · FHIR pull + pagination | ⬜ Not started |
 | 9 · **Tier 2 gate** | ⬜ |
-| 10 · README + diagrams | ⬜ Not started |
+| **10 · README + diagrams** | ⬜ **Do this even if B2 stays blocked** |
 | 11 · Submit | ⬜ Due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
@@ -33,11 +34,27 @@
 | Patient management | 100% |
 | Email questionnaire flow | 100% |
 | CSV lab upload | 100% |
-| Dashboards | 20% — assessment + lab tables, **no charts yet** |
+| Dashboards | 100% |
 | Documentation (README) | 0% — still the create-next-app default |
 | Live Vercel URL | 0% |
 
-Definition of Done (`.docs/01-challenge-analysis.md` §19): **22 of 28 met**, 2 partial, 4 outstanding.
+Definition of Done (`.docs/01-challenge-analysis.md` §19): **26 of 28 met**, 1 partial, 1 outstanding — see §1a.
+
+---
+
+### 1a. What is actually left, item by item
+
+Checked against `.docs/01-challenge-analysis.md` §19, not assumed.
+
+| # | Item | State |
+|---|---|---|
+| 26 | README: setup <10 min, architecture diagram, ERD, Decisions & tradeoffs | ❌ **Not started** — still the create-next-app default |
+| 1 | Login works locally **and on the live Vercel URL** | ⚠️ Local ✅, live ❌ (B2) |
+| 24 | Usable at 375px | ⚠️ **Unverified.** Responsive classes are in place but nobody has looked at a narrow viewport |
+| 20 | Patient time series | ✅ built — but the **plotted charts were never seen** (see §6) |
+
+Everything else on the list is met and was verified against the live database
+rather than inferred.
 
 ---
 
@@ -133,6 +150,11 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen |
 | **csv-parse `info.lines`** | Is the real file line number (header = 1), already correct across blank lines — so it is the number to show a clinician fixing the file in Excel. |
 | **`next dev` edits CLAUDE.md** | It appends an agent-rules block and re-adds it whenever removed. Committed deliberately, so the tree stays clean. |
 | **tsx scripts** | No top-level `await` (cjs output) and no automatic `.env` — wrap in `async function main()` and `import "dotenv/config"` first. |
+| **Recharts x-axis** | A string x-axis is **categorical**: points plot in array order at even spacing whatever the labels say. A back-dated result draws a line that doubles back, and a year's gap looks like a day's. Use `type="number"` + `scale="time"` with millisecond timestamps, and sort in `lib/labs/series.ts`. |
+| **Recharts single point** | One reading makes `dataMin === dataMax`, a zero-width domain where the marker vanishes or lands on the axis. `timeDomain()` pads a week either side. Every new patient hits this. |
+| **Recharts + SSR** | Renders only a wrapper `<div>` on the server; the SVG needs client-side layout. So **charts cannot be verified headlessly** — `renderToStaticMarkup` returns 127 bytes and no `<svg>`. jsdom would not help either (no layout). Verify chart *data* through the `role="img"` aria-labels, which carry the real values; verify *appearance* in a browser. |
+| **Risk-band colours vs CVD** | The four band colours are a continuous green→yellow→orange→red ramp, so **any two neighbours are close**: moderate↔high measured ΔE 8.0 normal / **0.4 deuteran**. Never put them in touching segments (stacked bar, pie). Faceted rows with per-row labels are safe, and each band clears 3:1 on its own. |
+| **Dashboard filters** | Completion rate is all-time (D-DASH-2) and the risk distribution is a register snapshot, so a global date filter would falsify them. The date range scopes the uploads card only, by design. |
 
 ---
 
@@ -145,7 +167,8 @@ app/assessment/[token]    public — authorised by the token alone
 app/api/auth/*            Auth.js
 
 lib/assessments/  definition (loads official JSON) · scoring (pure) · token · service
-lib/labs/         test-catalog · parse · classify (pure) · service (IO)
+lib/labs/         test-catalog · parse · classify (pure) · series (pure) · service (IO)
+lib/dashboard/    metrics (pure) · service (IO)
 lib/fhir/         pagination    [client + mappers still to build]
 lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
@@ -187,13 +210,15 @@ pointed at the commit that already existed.
 | #3 | `feat/patient-management` | CRUD, search, validation |
 | #4 | `feat/dsma8-assessments` | token → email → public form → scoring |
 | #6 | `feat/csv-lab-import` | parser, classifier, service, endpoint, report UI |
+| #8 | `feat/dashboards-charts` | trend charts, clinic metrics, risk bands, seed history |
+| #9 | `feat/dashboard-upload-filter` | recent imports + date-range filter |
 
 **Every remaining phase ships the same way** — branch, incremental commits,
 tests green, PR with real test output in the body, `--merge` (never squash),
 branch kept after merge. The procedure is in `CLAUDE.md` under *Git workflow*.
 
-Remaining branches: `feat/dashboards-charts`, `feat/fhir-push`,
-`feat/fhir-pull-pagination`, `docs/readme-and-diagrams`.
+Remaining branches: `docs/readme-and-diagrams`, `feat/fhir-push`,
+`feat/fhir-pull-pagination`.
 
 `backup/pre-restructure` is a **local-only** safety ref at the original
 pre-restructure tip. `git diff backup/pre-restructure main` was verified empty.
@@ -203,27 +228,31 @@ Safe to delete once you are happy.
 
 ## 9. Next session — start here
 
-1. Read `.docs/session/state.md` (this file) and `CLAUDE.md`.
-2. Check whether **B2 (Vercel)** has cleared. It is now the only open blocker,
-   and a live URL is required, not optional.
-3. **Build Phase 5, dashboards and charts**, on `feat/dashboards-charts`.
-   The database already holds the ten sample lab results, so the charts have
-   real data to render on first run.
+**Tier 1 is feature-complete.** Two things stand between this and a valid
+submission, and one of them does not depend on Vercel.
 
-   Checkpoint: per-patient glucose, HbA1c and SBP trends plus a questionnaire
-   score history, and a clinic view with total patients, completion rate and
-   risk-band distribution. Empty states must look intentional — a patient with
-   no labs, and a clinic with no completed assessments, are both normal.
+1. **Write the README (Phase 10), on `docs/readme-and-diagrams`.** It is one of
+   the brief's six graded areas and is still the create-next-app default. It
+   needs: setup a stranger can follow in under 10 minutes, an **architecture
+   diagram**, an **ERD**, and a **"Decisions & tradeoffs"** section — the brief
+   says outright *"We read this carefully."*
 
-   Decisions already made: **D-DASH-2** completion rate is completed ÷ all sent,
-   all time, `—` when the denominator is zero. **D-DASH-3** risk distribution
-   counts each patient once, by their latest *completed* assessment.
-   Watch the Recharts trap in `.docs/01-challenge-analysis.md` §7.7: a
-   categorical x-axis mis-orders dates, so out-of-order inserts must still
-   render chronologically.
+   Most of the raw material already exists: the `D-*` decisions in
+   `.docs/01-challenge-analysis.md` §16, the schema reasoning in §10, and the
+   defect write-ups in `CHANGELOG.md`. Mermaid renders on GitHub.
 
-4. Then Phase 10, the README — still the create-next-app default, and one of
-   the six areas the brief grades.
+2. **Deploy (Phase 6), the moment B2 clears.** A live URL is required, not
+   optional. Deploying also flushes out the production-only failures nobody has
+   seen yet: serverless function timeouts, and Postgres connection exhaustion
+   through the pooled URL.
+
+3. **Look at the app in a browser at 375px.** Two graded items rest on this and
+   neither has been checked by eye — the charts (Recharts draws client-side, so
+   no headless check is possible) and mobile usability.
+
+Only then Tier 2 (`feat/fhir-push`, `feat/fhir-pull-pagination`). Tier 2 is
+"strongly recommended", but a polished Tier 1 is explicitly a complete
+submission, and an undocumented Tier 2 scores worse than a documented Tier 1.
 
 Deeper context, if needed: `.docs/01-challenge-analysis.md` (requirements
 matrix, security analysis, evaluator edge cases) and `.docs/candidate-brief.md`
