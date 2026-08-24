@@ -8,6 +8,126 @@ reconstruct it from diffs.
 
 ---
 
+## Session 3 — 2026-08-24 (Mon) — README shipped, and the app finally looked at
+
+**Tier 1 is complete except the live deployment.** Two merged PRs (#12, #13).
+Definition of Done 26 → 27 of 28. The single outstanding item is the Vercel URL,
+which only Joe can unblock.
+
+### Phase 10 — the README (PR #12)
+
+It was still the create-next-app default, and it is one of the brief's six
+graded areas — the brief says outright *"We read this carefully."*
+
+Three Mermaid diagrams, because GitHub renders them and they carry what prose
+doesn't: an **architecture diagram** showing the three authorization layers and
+the pure-function/service split, an **ERD** annotating every column that encodes
+a decision, and a **sequence diagram** for the assessment token flow, since "the
+raw token is never persisted" is easier to see than to read.
+
+The **Decisions and tradeoffs** section leads with the calls a reviewer is most
+likely to challenge, each with its cost stated rather than hidden: units stored
+as reported rather than relabelled, a changed value skipped rather than
+overwritten, hard delete over soft delete, and why the risk bands are faceted
+rather than stacked.
+
+Claims were verified rather than copied from this changelog: `.docs/` is tracked
+so the quick-start upload step works from a fresh clone; the mg/dL example
+matches `lib/labs/test-catalog.ts`; and the in-app template download was
+`cmp`-checked byte-identical to the supplied attachment.
+
+### The browser pass — a previously "impossible" check that took ten minutes
+
+Sessions 1 and 2 both recorded that the charts **"cannot be verified
+headlessly"**. That was wrong, and it had blocked two graded items for two
+sessions.
+
+The reasoning had been: `renderToStaticMarkup` returns a 127-byte wrapper with
+no `<svg>`, and jsdom has no layout. Both true. The error was
+**over-generalising from those two tools to all headless verification** —
+headless Chrome has real layout and renders Recharts exactly as a user sees it.
+Chrome was installed on this machine the whole time.
+
+`puppeteer-core` was installed **in the scratchpad, not the project**: it is how
+we check the work, not part of the product, and a submission should not ship a
+browser driver in its `package.json`.
+
+### Three defects, found in three different ways
+
+Worth separating, because each needed a different kind of looking:
+
+| Found by | Defect |
+|---|---|
+| Measuring `scrollWidth - clientWidth` | `/labs/upload` scrolled sideways at 375px |
+| Walking every element's `getBoundingClientRect().right` | Named the culprit — a `-mx-5` div sitting at `right=378` in a 375px viewport — instead of guessing |
+| **Looking at the screenshot** | The truncated `not survey…` label, which passed the overflow check entirely |
+
+The first is the interesting one. The `-mx-5 overflow-x-auto sm:mx-0`
+edge-to-edge table pattern is correct **only when the parent supplies matching
+padding to cancel**. `Card` is `rounded-lg border bg-surface` — no padding at
+all — so the negative margin had nothing to cancel and hung the table 20px
+outside the card on each side, breaking the card border and pushing the page
+wider than the viewport. The identical pattern in `upload-form.tsx` is correct,
+because its parent there really is a `px-5` wrapper. Both sites looked the same;
+only one was wrong. A comment at the fixed site now records the distinction.
+
+The second defect is a reminder that `truncate` in a fixed-width grid column
+**hides text at every width, not just mobile** — `not survey…` had been rendering
+at 1280px for two sessions.
+
+### What the charts actually look like
+
+Seen for the first time, not inferred from aria-labels. Jane Doe's page draws
+three trend charts with correctly plotted, chronologically ordered points:
+glucose 112 → 104, HbA1c 7.1 → 6.9, and DSMA-8 descending 17 → 11 → 6, matching
+the three completed assessments in the table below it. The fourth chart is
+correctly absent — she has no systolic readings.
+
+The dashboard's numbers were read off the rendered page rather than the query:
+88% labelled "7 of 8 completed, all time", bands summing to 3, and **High risk
+at 0** despite Jane having a High-risk assessment in her history — the visible
+proof that the distribution counts each patient once by their *latest*
+assessment rather than counting assessments.
+
+The public questionnaire was opened in a fresh cookie-less browser context, which
+is both how a patient arrives and a check that the page is authorised by its
+token alone. At 375px: 8 fieldsets, 32 radios — 8 questions × 4 options, matching
+the official JSON — with full-width tap targets and no overflow. It is the best
+page in the app on a phone, which is the right outcome given patients answer it
+there.
+
+### A side effect that had to be cleaned up
+
+Getting a live token meant sending a real assessment through the UI, which added
+a 9th row and moved completion from 88% to 78%. That figure appears in
+`state.md`, the README and several PR bodies, so a stray test row would have
+quietly falsified all of them. The row was deleted and the state re-checked
+against the database: `patients=3 assessments=8 completed=7 expired=1 labs=10
+rate=88%`. Recorded as **D-QA-2** so the next session restores the database too.
+
+### What this session got wrong
+
+One thing, and it is the same shape as session 2's four: **a plausible
+conclusion that nobody tested.** "Charts cannot be verified headlessly" was
+recorded as a finding in two consecutive session files, propagated into
+`state.md`'s gotcha table as settled fact, and used to justify leaving two graded
+items unverified. It took ten minutes to disprove.
+
+The lesson is narrower than "test everything": a *negative* claim — that
+something cannot be done — is the kind most worth re-checking, because unlike a
+positive claim it never fails loudly. It just quietly shrinks the work.
+`state.md` §6a now carries the correction and the working recipe.
+
+### Left undone
+
+**B2 (Vercel) is the only incomplete Tier 1 item**, and only Joe can clear it.
+
+Tier 2 is untouched and is not blocked — `feat/fhir-push` can start immediately.
+Note that Tier 2's own Definition of Done also requires the import to complete
+from the deployed URL, so it cannot be fully closed while B2 is open either.
+
+---
+
 ## Session 2 — 2026-08-24 (Mon) — repo published, Tier 1 finished
 
 **Phases 4 and 5 complete; Tier 1 is feature-complete.** Ten merged PRs, test
