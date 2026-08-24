@@ -7,8 +7,8 @@ clinic-wide figures.
 
 Built as a timed engineering challenge for **Capadev**.
 
-> **Status:** Tier 1 (core platform) is complete. Tier 2 (FHIR integration) is
-> scaffolded in the data model but not yet implemented — see
+> **Status:** Tier 1 (core platform) and Tier 2 (FHIR integration) are complete.
+> Tier 3 (AI) is out of scope for this submission — see
 > [What is and isn't built](#what-is-and-isnt-built).
 
 ---
@@ -19,6 +19,7 @@ Built as a timed engineering challenge for **Capadev**.
 - [Architecture](#architecture)
 - [Data model (ERD)](#data-model-erd)
 - [How the three core flows work](#how-the-three-core-flows-work)
+- [FHIR integration (Tier 2)](#fhir-integration-tier-2)
 - [Security](#security)
 - [Testing](#testing)
 - [Decisions and tradeoffs](#decisions-and-tradeoffs)
@@ -73,8 +74,14 @@ Fill in `.env`:
 | `APP_BASE_URL` | ✅ | `http://localhost:3000` locally; the deployed origin in production |
 | `EMAIL_PROVIDER` | — | Leave empty to use the console adapter (see below) |
 | `EMAIL_API_KEY`, `EMAIL_FROM` | — | Only if `EMAIL_PROVIDER=resend` |
-| `FHIR_*` | — | Tier 2 only; unused today |
+| `FHIR_BASE_URL` | — | The national platform, e.g. `https://fhir-challenge.vihagent.net/fhir` |
+| `FHIR_CANDIDATE_ID` | — | Our organisation tag on that server. Not a secret |
+| `FHIR_API_KEY` | — | **Secret.** Never `NEXT_PUBLIC_`, never logged |
 | `AI_*` | — | Tier 3 only; unused today |
+
+Leave the three `FHIR_` variables empty and everything in Tier 1 still works:
+the integration page says which are missing and the rest of the app is
+unaffected. Fill them in and the National platform page becomes live.
 
 ### 4. Migrate and seed
 
@@ -140,17 +147,18 @@ flowchart TB
         end
         subgraph mutations["Server Actions & Route Handlers"]
             SA["lib/actions/*<br/>requireClinician() · gate 3"]
-            API["api/labs/upload<br/>requireClinicianApi()"]
+            API["api/labs/upload<br/>api/fhir/sync · api/fhir/import<br/>requireClinicianApi()"]
         end
         subgraph domain["lib/ — business logic"]
-            PURE["Pure functions<br/>scoring · classify · parse<br/>metrics · series"]
+            PURE["Pure functions<br/>scoring · classify · parse<br/>metrics · series<br/>fhir mappers · reconcile"]
             SVC["Services (IO)<br/>assessments · labs · dashboard"]
+            FC["lib/fhir/client.ts<br/>server-only · holds the API key"]
         end
     end
 
     DB[("Postgres 17<br/>Neon")]
     MAIL["Email adapter<br/>console | Resend"]
-    FHIR["FHIR R4 server<br/>Tier 2 — not yet built"]
+    FHIR["FHIR R4 server<br/>national platform"]
 
     CU --> PX --> DASH
     PU --> PUB
@@ -163,9 +171,10 @@ flowchart TB
     SVC --> PURE
     SVC --> DB
     SVC --> MAIL
-    SVC -.-> FHIR
-
-    style FHIR stroke-dasharray: 5 5
+    SVC --> FC
+    API --> FC
+    FC --> FHIR
+    FC --> PURE
 ```
 
 ### Layering rule
@@ -361,6 +370,221 @@ patients per risk band, and recent uploads with a date-range filter.
 
 ---
 
+## FHIR integration (Tier 2)
+
+The clinic reports to a shared HAPI **FHIR R4** server standing in for a national
+health data platform. Data moves both ways: patients and locally-entered lab
+results are **pushed** to it, and twelve months of seeded history for five
+patients is **pulled** from it into the same tables as everything else.
+
+### Data flow
+
+```mermaid
+flowchart LR
+    subgraph app["PulseTrack"]
+        direction TB
+        PAT["Patient saved<br/>lib/actions/patients.ts"]
+        CSV["CSV imported<br/>lib/labs/service.ts"]
+        HOOK["sync-hooks.ts<br/>the only seam"]
+        QUEUE[("fhirSyncStatus<br/>= PENDING")]
+        PUSH["push.ts"]
+        PULL["pull.ts"]
+        CLIENT["client.ts<br/>auth · timeout · retry · throttle"]
+        DB[("Postgres<br/>patients · lab_results")]
+    end
+
+    subgraph ui["Browser"]
+        SYNC["POST /api/fhir/sync<br/>looped until drained"]
+        IMP["POST /api/fhir/import<br/>one MRN per call"]
+    end
+
+    SRV["HAPI FHIR R4<br/>shared, ownership-enforced"]
+
+    PAT --> HOOK
+    CSV --> HOOK
+    HOOK -->|"patient: inline, 6s budget"| PUSH
+    HOOK -->|"labs: queued"| QUEUE
+    SYNC --> PUSH
+    QUEUE --> PUSH
+    IMP --> PULL
+
+    PUSH -->|"POST + If-None-Exist<br/>scoped by our _tag"| CLIENT
+    PULL -->|"GET ?identifier=…<br/>GET ?subject=… _count=20"| CLIENT
+    CLIENT <--> SRV
+
+    PUSH -->|"fhirPatientId<br/>fhirObservationId"| DB
+    PULL -->|"source = FHIR"| DB
+
+    style SRV stroke-width:2px
+```
+
+**The local write always commits first.** A platform outage never rolls back a
+clinical record and never blocks data entry. Sync state lives on the row
+(`fhirSyncStatus`, `fhirLastError`), so a failure is a visible state rather than
+a lost write.
+
+### Ownership, and the trap in the API guide's own example
+
+Reads on this server are open to every organisation; writes are not. Everything
+we create is tagged with our candidate id, and only we can modify it.
+
+The guide suggests making a create idempotent like this:
+
+```
+POST /Patient
+If-None-Exist: identifier=https://challenge.capadev.dev/mrn|MRN-1001
+```
+
+That is unsafe on a shared server, and measurably so. `MRN-1001` is the MRN
+printed in the supplied CSV template, so probing before writing any code:
+
+```
+GET /Patient?identifier=https://challenge.capadev.dev/mrn|MRN-1001
+→ total = 5
+  id=189 tag=cand-jihane-l    id=265 tag=cand-maryamhmayed-l
+  id=278 tag=cand-marwa-l     id=340 tag=cand-adham-l
+  id=360 tag=cand-khalils-l
+```
+
+Five other organisations already hold that MRN. The guide's header matches all
+five and the server answers `412`. Had it matched exactly **one**, we would have
+stored a stranger's resource id and every later `PUT` would have earned a
+permanent `403` — a silent failure that looks like a bug in our code.
+
+Every conditional create is therefore scoped by our ownership tag, and
+`conditionalCreate()` appends that scope itself so no caller can forget it:
+
+```
+If-None-Exist: identifier=…|MRN-1001&_tag=https://challenge.capadev.dev/tags|cand-joe-l
+```
+
+Whether HAPI honours `_tag` inside that header was the open question, and
+because the unscoped search matches five resources, a `201` answers it rather
+than merely suggesting it:
+
+```
+POST /Patient  (tag-scoped)   → 201 Created   Location: …/Patient/816/_history/1
+POST /Patient  (identical)    → 200 OK        Location: …/Patient/816/_history/1
+```
+
+**Belt and braces:** after any create-or-match, the response's own `meta.tag` is
+checked before the record is treated as writable. A resource we can *see* is not
+necessarily one we may *change*, and that distinction is not one to infer from a
+request having succeeded.
+
+### Idempotency
+
+| Scenario | Guarantee | Mechanism |
+|---|---|---|
+| Push a patient twice | No duplicate remote `Patient` | `POST` + tag-scoped `If-None-Exist` on the MRN identifier; the second call returns `200` and the same id |
+| Push a lab result twice | No duplicate remote `Observation` | `If-None-Exist` on our own identifier system carrying the local row's **cuid** — unique by construction, so unlike an MRN it can never match another organisation's resource |
+| Retry after an ambiguous network failure | Still no duplicate | Exactly why every write is a conditional create rather than a plain `POST`: the retry's search finds whatever the lost response created |
+| Import the seed data twice | No duplicate local rows, and no writes at all | Upsert patients by unique `mrn`; match observations by unique `fhirObservationId`, then by `(patientId, collectedDate, testCode)` |
+| A remote failure mid-import | No local data loss | The local commit is a separate step from the sync, which only records status |
+
+Measured, rather than asserted:
+
+```
+BEFORE re-push:  Patients=4  Observations=10
+batch: {"patientsPushed":4,"resultsPushed":0,"failed":0,"more":false,"remaining":0}
+AFTER  re-push:  Patients=4  Observations=10
+
+re-import: imported=0  updated=0  unchanged=36  merged=0  ×5 patients
+```
+
+### Pagination — two things the guide gets wrong about its own server
+
+**The `next` link cannot be followed as given.** It points at `http://hapi:8080`,
+the server's own container hostname, which is unreachable from outside:
+
+```
+next → http://hapi:8080/fhir?_getpages=c9b366f6-…&_getpagesoffset=20&_count=20
+```
+
+Following it verbatim, as the guide instructs, fails in the worst possible way —
+silently, truncating every import to its first page while looking successful.
+`lib/fhir/pagination.ts` keeps the link's path and query (which carry the
+server's opaque `_getpages` cursor and must not be reconstructed by hand) and
+re-bases them onto the configured public host.
+
+**`_count=20`, not the guide's 50.** Each seeded patient has exactly 36
+observations, so at `_count=50` everything returns in a single page, no `next`
+link is ever emitted, and the pagination code never executes. The import would
+be an integration that *looks* paginated and has never paginated once. At 20
+every patient pages twice — 20 + 16 — which the per-patient report shows.
+
+Loop control depends on the presence of a `next` link and nothing else:
+`bundle.total` is present on an unpaged search and **absent** on a paged one.
+The walk also guards against a cursor that points back at a page already read,
+caps the number of pages, and **reports truncation** rather than hiding it — a
+silently truncated import is worse than a failed one, because it looks like it
+worked.
+
+### Failures: transient versus terminal
+
+The distinction that governs everything in `lib/fhir/errors.ts`. A `403` is not a
+failure to retry — it is a permanent fact about ownership, and retrying it spends
+a documented 120 requests/minute re-learning it.
+
+| Status | Retried | Behaviour |
+|---|---|---|
+| `400` / `422` | No | Our resource is malformed. Show the server's `diagnostics`; fix, don't retry |
+| `401` | No | Surfaced as "check `FHIR_API_KEY`" |
+| `403` | No | Recorded as `FORBIDDEN` — a **state**, excluded from the queue so it can actually drain |
+| `404` | No | The linked resource is gone |
+| `405` | No | We issued a disabled operation (DELETE, conditional update, update-as-create). A programming error |
+| `412` | No | `If-None-Exist` matched more than one resource — surfaced for inspection |
+| `429` | **Yes** | Honours `Retry-After`, else exponential backoff **with jitter** |
+| `5xx`, timeout, reset | **Yes** | Up to 3 attempts with backoff |
+
+Verified by pointing the client at a bad key and an unreachable host:
+
+```
+wrong API key → 401 : "…rejected our credentials. Check FHIR_API_KEY."   1218ms  (one attempt)
+unreachable host    : "Could not reach the national platform."           4302ms  (three, with backoff)
+recovery            : {"ok":true,"fhirId":"818","created":false}  →  SYNCED
+```
+
+Rate limiting is also handled **proactively**. Reacting to a `429` is necessary
+but not sufficient: a seed import is roughly 15 requests per patient, so an
+unthrottled client earns the limit rather than avoiding it. `throttle.ts` holds a
+sliding window at 100/min against the documented 120, with a concurrency cap of
+4, leaving headroom for the retries.
+
+### Why the work is batched, and driven from the browser
+
+Vercel's Hobby plan caps a function at 60 seconds, and both directions of this
+integration are naturally larger than that:
+
+- **The push** is one request per record. A CSV can hold thousands of rows, so
+  pushing inside the upload request would exceed the function budget long before
+  the rate limit — and would do so while the clinician waits for the validation
+  report. `/api/fhir/sync` pushes a bounded batch and reports whether more
+  remain; the browser loops until it is told to stop.
+- **The pull** takes one MRN per call. Five patients at 36 observations each is
+  the single slowest thing in the app; per-patient, one failure does not take the
+  other four with it, and the report can say what happened to *that* patient.
+
+Both loops also give the UI something real to show — a count going down, a row
+per patient — instead of a spinner of unknown length.
+
+**A patient is the exception and syncs inline**, bounded at 6 seconds, because
+"create a patient and it appears on the platform" is what the brief asks for and
+a queue someone must drain by hand is not that. If the budget lapses the record
+is already marked pending, so nothing is lost.
+
+### What is never pushed
+
+`source = FHIR` rows are excluded from the push queue entirely. Sending the
+platform's own data back would duplicate its records and misrepresent where they
+came from. The integration page shows this rule as a figure: **Results sent
+10 / 10** while **180** are imported.
+
+Seeded patients are marked `EXTERNAL_SEED` and never written to at all.
+
+
+---
+
 ## Security
 
 | Control | Implementation |
@@ -373,6 +597,10 @@ patients per risk band, and recent uploads with a date-range filter.
 | Authorization | Three layers, above; `requireClinician()` in every mutation |
 | Secrets | `.env` is gitignored; no secret is ever exposed through `NEXT_PUBLIC_`; git history was scanned before publishing |
 | Logging | Ids and counts only — never names, emails, MRNs, answers or tokens |
+| FHIR API key | Confined to `lib/fhir/client.ts` and `config.ts`, both `server-only`, so a client-component import is a build error rather than a leaked credential. Verified absent from the rendered page |
+| FHIR data minimisation | Email and phone are deliberately **not** sent as `telecom`. The server is shared and reads are open, so every field we push is readable by every other organisation on it |
+| FHIR import surface | `/api/fhir/import` accepts only the documented seed MRNs. Accepting any MRN would turn an authenticated session into a lookup tool for every record on a shared server |
+| External errors | `OperationOutcome.diagnostics` is truncated and sanitised before it is stored or shown; raw response bodies never reach the UI or the logs |
 | Patient data | Entirely fabricated |
 
 > **This is good practice, not compliance.** No claim of HIPAA or GDPR
@@ -389,9 +617,19 @@ npm test        # vitest
 npm run lint    # eslint
 ```
 
-188 tests, concentrated on the pure functions — scoring and every risk-band
+264 tests, concentrated on the pure functions — scoring and every risk-band
 boundary, CSV parsing against BOM/CRLF/quoted/ragged input, classification,
-dashboard aggregates, date round-tripping, and the FHIR pagination helper.
+dashboard aggregates, date round-tripping, and the whole FHIR mapping and
+reconciliation layer.
+
+The FHIR tests carry more weight than the rest, for a specific reason: **the
+server's writes are permanent** — `DELETE` is disabled — so the mappers, the
+retry policy and the import's collision handling are the only parts of that
+integration that can be exercised freely. They cover the mapping in both
+directions, that `400/401/403/404/405/412/422` are never retried while
+`429/5xx/timeout` are, `Retry-After` handling, the throttle's ceiling and
+concurrency cap, and every branch of the import's two-constraint reconciliation
+— including that a locally-held value is never overwritten by a remote one.
 
 Tests are only half of it. Several defects in this project produced a *plausible
 wrong answer* rather than an error, and were found only by running the thing and
@@ -403,6 +641,9 @@ reading the output:
 | `curl` on the endpoint | `POST /api/labs/upload` returned `307` to `/login` instead of `401`. `fetch` follows the redirect, receives login HTML with a `200`, and parses it as JSON — so an expired session rendered an **empty report** rather than an error |
 | Running a colour-vision validator | Two adjacent risk-band colours measured ΔE **0.4** under deuteranopia — literally the same colour |
 | Re-reading the brief against the work | The clinic view's required "recent uploads with at least one filter" was missing entirely |
+| Probing the live FHIR server before writing a line of client code | The API guide's own `If-None-Exist` example matches five other organisations' copies of `MRN-1001`. Following the guide would have stored a stranger's resource id and earned a permanent `403` on every later write |
+| Timing the first sync batch | 14 records took **12.8s** pushed sequentially — a fifth of a Vercel function's budget — while the throttle's concurrency cap sat unused because nothing ever ran concurrently. Now 3.2s |
+| Timing the second import | A re-import was idempotent but took **10s per patient against 2.4s** for the first, writing 180 unchanged rows back one at a time. Comparing before writing brought it to 2.1s |
 | Driving a headless browser at 375px | Three layout defects nobody had seen, because Recharts only draws client-side and no browser pass had ever been run: `/labs/upload` scrolled sideways (a `-mx-5` breakout inside a `Card` with no padding to cancel it), a risk-band label was truncated to `not survey…` **at every width**, and the nav clipped "National platform" on every authenticated page |
 
 ---
@@ -523,6 +764,50 @@ charts use `type="number"` with `scale="time"` over millisecond timestamps, and
 domain, because `dataMin === dataMax` is a zero-width axis where the marker
 vanishes.
 
+### D-16: Conditional creates are scoped by our ownership tag
+
+The API guide's `If-None-Exist: identifier=…|MRN-1001` matches **any**
+organisation's `MRN-1001`, and five of them already have one. Scoping by
+`_tag` makes idempotency mean "ours", and the response's `meta.tag` is checked
+before anything is treated as writable.
+
+The cost: if the server ever stopped supporting `_tag` as a search parameter,
+this would create a second copy of each patient rather than failing loudly. That
+is why `meta.tag` is verified on every response rather than trusted once.
+
+### D-17: Observations are keyed on the local row's cuid, not on a natural key
+
+An MRN is shared vocabulary; a cuid is ours alone. Keying the Observation's
+`If-None-Exist` on the local `LabResult` id makes the match exact even though
+reads are open to everyone, and it is what makes a retry after an ambiguous
+network failure safe.
+
+### D-18: Pulled data is never pushed back, and a merge never overwrites
+
+`source = FHIR` rows are excluded from the push queue: sending the platform's own
+records back would duplicate them and misrepresent their provenance.
+
+And where an import meets a measurement already held locally — same patient, date
+and test, entered from a CSV — the link is attached and the **stored value is
+left alone**. Silently editing a clinician's record because a remote resource
+shares a date is how a clinical system stops being trustworthy. Where the two
+disagree it is counted and shown. This is the same rule a re-uploaded CSV row
+already follows (D-4).
+
+The cost: the two systems can hold different values for one measurement, and we
+show that rather than resolving it. Resolving it automatically would mean
+choosing a winner without a clinician, which is not ours to choose.
+
+### D-19: Sync work is batched and driven from the browser
+
+One bounded batch per request, looped by the client, because a Vercel function
+has 60 seconds and both a large CSV push and a five-patient import are naturally
+larger than that. The alternative — a background job — needs infrastructure this
+submission does not have, and would give the clinician nothing to watch.
+
+A single patient is the exception and syncs inline within a 6-second budget,
+because the brief asks for a patient to sync *when they are created*.
+
 ---
 
 ## What is and isn't built
@@ -538,24 +823,30 @@ vanishes.
 | Dashboards and charts | ✅ |
 | Documentation | ✅ (this file) |
 
-### Tier 2 — FHIR integration: not implemented
+### Tier 2 — FHIR integration: complete
 
-The data model and the pagination helper are in place — `Patient.fhirPatientId`,
-`fhirOwnership`, `fhirSyncStatus`, `LabResult.fhirObservationId`, `LabSource.FHIR`,
-and `lib/fhir/pagination.ts` — but no client, mapping or sync exists yet.
+| Requirement | Status |
+|---|---|
+| Push patients on create/update as `Patient` | ✅ |
+| Push imported lab results as linked `Observation`s | ✅ |
+| Pull the five seeded patients and their history | ✅ 180 observations |
+| Authentication, failures, retries, no double-import | ✅ |
+| Integration diagram in this README | ✅ [above](#fhir-integration-tier-2) |
 
-Read-only reconnaissance of the live server was done during Phase 0, and
-corrected three assumptions that would each have cost real time:
+Three read-only reconnaissance findings shaped the implementation, each of which
+contradicts the API guide about its own server, and each of which would have
+failed silently:
 
-1. **Pagination `next` links point at `http://hapi:8080`** — the server's
-   internal Docker host, unreachable from outside. Following them verbatim, as
-   the API guide instructs, silently truncates every import to page one.
-   `lib/fhir/pagination.ts` rebases each link onto the configured public base.
-2. **`bundle.total` is absent on paged responses**, so loop control has to
-   depend on the `next` link alone.
-3. **Each seed patient has 36 observations, not 180.** At the guide's suggested
-   `_count=50` nothing paginates at all, so pagination code would go untested.
-   `_count=20` makes the loop genuinely run.
+1. **Pagination `next` links point at `http://hapi:8080`**, unreachable from
+   outside. Following them verbatim truncates every import to page one.
+2. **`bundle.total` is absent on paged responses**, so loop control depends on
+   the `next` link alone.
+3. **Each seeded patient has 36 observations, not 180.** At the guide's
+   `_count=50` nothing paginates, so the pagination path would never run.
+
+A fourth was found by probing before the first write: **five other candidates
+already hold `MRN-1001`**, so the guide's own `If-None-Exist` example matches
+foreign resources. See [Ownership](#ownership-and-the-trap-in-the-api-guides-own-example).
 
 ### Tier 3 — AI feature: not started
 
