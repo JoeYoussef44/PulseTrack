@@ -50,10 +50,62 @@ login and `localhost:3000` in session notes, and the FHIR base URL and
 `cand-joe-l` candidate id, both of which come from the official public
 attachment.
 
+### Phase 4 — CSV importer (PR #6)
+
+Five commits: pure parser, pure classifier, service, endpoint, report UI.
+
+**The design decision that mattered was three row outcomes, not two.** Under
+accepted/rejected alone, re-uploading a corrected file reports its
+already-good rows as *errors* — alarming, and false. Separating "already
+imported" is what makes the brief's re-upload requirement read correctly.
+
+Errors and warnings were separated for the same reason: data-integrity
+failures reject the row, cosmetic mismatches import and are flagged. Rejecting
+a row because a lab spelled a test name differently would fail rows an
+evaluator considers valid.
+
+Two clinical judgement calls, both documented in the code:
+
+- A mismatched **unit** is stored exactly as reported and flagged, never
+  relabelled to the canonical unit. Rewriting 5.8 mmol/L as 5.8 mg/dL would
+  turn a normal glucose into a fatal-looking one while looking like a tidy-up.
+  A pure case difference normalises silently.
+- A **changed value** on re-upload is skipped and reported, never written over
+  the top (D-CSV-2).
+
+### Two defects found by probing rather than reasoning
+
+1. **The header was inferred from the first data row's keys.** With
+   `relax_column_count`, a short row yields a record missing those keys, so a
+   file whose *first* data row was short got rejected whole — exactly the messy
+   file this importer exists to survive. Caught by a test written before the UI.
+   The header is now captured from csv-parse's own `columns` callback.
+
+2. **`POST /api/labs/upload` returned 307 to `/login`, not 401.** The edge proxy
+   matched first. Worse than it looks: `fetch` follows the redirect, receives
+   login HTML with a 200, and parses it as JSON — so a session expiring while
+   the page was open surfaced as an *empty report* rather than an error. A
+   silent wrong answer. API paths are now exempt from the redirect, never from
+   authorisation. Found only by curling the endpoint.
+
+### Verified, not assumed
+
+Against the live Neon database: the supplied sample imports **10/10** on a
+fresh database, re-uploading it accepts 0 and rejects 0 with the row count
+unchanged at 10, and a messy file imports 2 of 10 while explaining all eight
+other outcomes. Then over real HTTP as the seeded clinician: page renders,
+upload returns the report, `.txt` → 415, wrong-columns CSV → 422, unauthenticated
+→ 401 JSON.
+
+Test suite 85 → 151.
+
+The database deliberately retains the ten sample lab results, so Phase 5's
+charts have real data on first run.
+
 ### Left undone
 
-Unchanged from session 1 — Phase 4 (CSV importer) is still the next build task.
-B2 (Vercel) is still open.
+Phase 5 (dashboards and charts) is next. The README is still the
+create-next-app default. **B2 (Vercel) is now the only open blocker.**
 
 ---
 

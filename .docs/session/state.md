@@ -1,13 +1,13 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-24**, end of session 1.
+> Last updated: **2026-08-24**, session 2.
 
 ---
 
 ## 1. Where we are
 
-**Phase 3 of 12 complete.** Tier 1 is roughly 50% done.
+**Phase 4 of 12 complete.** Tier 1 is roughly 70% done.
 
 | Phase | Status |
 |---|---|
@@ -15,8 +15,8 @@
 | 1 · Schema, migration, seed, auth | ✅ Complete locally (live deploy outstanding) |
 | 2 · Patient CRUD | ✅ Complete |
 | 3 · Assessment flow | ✅ Complete |
-| **4 · CSV importer** | ⬜ **NEXT** |
-| 5 · Dashboards + charts | ⬜ Not started |
+| 4 · CSV importer | ✅ Complete |
+| **5 · Dashboards + charts** | ⬜ **NEXT** |
 | 6 · **Tier 1 gate** — deploy + QA | ⬜ Blocked on Vercel |
 | 7 · FHIR client + push | ⬜ Not started |
 | 8 · FHIR pull + pagination | ⬜ Not started |
@@ -32,12 +32,12 @@
 | Authentication | 100% |
 | Patient management | 100% |
 | Email questionnaire flow | 100% |
-| CSV lab upload | 0% |
-| Dashboards | 15% — assessment table only, **no charts yet** |
+| CSV lab upload | 100% |
+| Dashboards | 20% — assessment + lab tables, **no charts yet** |
 | Documentation (README) | 0% — still the create-next-app default |
 | Live Vercel URL | 0% |
 
-Definition of Done (`.docs/01-challenge-analysis.md` §19): **15 of 28 met**, 4 partial, 9 outstanding.
+Definition of Done (`.docs/01-challenge-analysis.md` §19): **22 of 28 met**, 2 partial, 4 outstanding.
 
 ---
 
@@ -128,6 +128,11 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen |
 | **React purity** | `Date.now()` during render is a lint **error**. Derive time-dependent state before the render tree. |
 | **Zod 4** | `errorMap` is now `error`. |
 | **Dates** | Always `parseIsoDate` / `toIsoDate` (`lib/validation/patient.ts`). Constructing from local components shifts the day west of UTC. |
+| **Edge proxy vs API routes** | The proxy matched `/api/*` and **redirected** unauthenticated requests to `/login`. A `fetch` follows that, gets login HTML with a 200, and parses it as JSON — so an expired session showed an *empty report*, not an error. API paths are now exempt from the redirect (never from `requireClinicianApi()`). Any new API route must authorise itself. |
+| **csv-parse ragged rows** | With `relax_column_count`, a short row yields a record **missing those keys entirely**. Inferring the file's columns from row one therefore rejects the whole file whenever the first data row is short. Capture the header from the `columns` callback instead. |
+| **csv-parse `info.lines`** | Is the real file line number (header = 1), already correct across blank lines — so it is the number to show a clinician fixing the file in Excel. |
+| **`next dev` edits CLAUDE.md** | It appends an agent-rules block and re-adds it whenever removed. Committed deliberately, so the tree stays clean. |
+| **tsx scripts** | No top-level `await` (cjs output) and no automatic `.env` — wrap in `async function main()` and `import "dotenv/config"` first. |
 
 ---
 
@@ -140,7 +145,7 @@ app/assessment/[token]    public — authorised by the token alone
 app/api/auth/*            Auth.js
 
 lib/assessments/  definition (loads official JSON) · scoring (pure) · token · service
-lib/labs/         test-catalog  [parser + validation still to build]
+lib/labs/         test-catalog · parse · classify (pure) · service (IO)
 lib/fhir/         pagination    [client + mappers still to build]
 lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
@@ -181,13 +186,14 @@ pointed at the commit that already existed.
 | #2 | `feat/clinician-auth` | Auth.js v5, three-layer authorization |
 | #3 | `feat/patient-management` | CRUD, search, validation |
 | #4 | `feat/dsma8-assessments` | token → email → public form → scoring |
+| #6 | `feat/csv-lab-import` | parser, classifier, service, endpoint, report UI |
 
 **Every remaining phase ships the same way** — branch, incremental commits,
 tests green, PR with real test output in the body, `--merge` (never squash),
 branch kept after merge. The procedure is in `CLAUDE.md` under *Git workflow*.
 
-Planned branches: `feat/csv-lab-import`, `feat/dashboards-charts`,
-`feat/fhir-push`, `feat/fhir-pull-pagination`, `docs/readme-and-diagrams`.
+Remaining branches: `feat/dashboards-charts`, `feat/fhir-push`,
+`feat/fhir-pull-pagination`, `docs/readme-and-diagrams`.
 
 `backup/pre-restructure` is a **local-only** safety ref at the original
 pre-restructure tip. `git diff backup/pre-restructure main` was verified empty.
@@ -198,8 +204,27 @@ Safe to delete once you are happy.
 ## 9. Next session — start here
 
 1. Read `.docs/session/state.md` (this file) and `CLAUDE.md`.
-2. Check whether B1 and B2 have cleared.
-3. **Build Phase 4, the CSV importer.** Checkpoint: the supplied `lab-results-sample-clean.csv` imports **10/10** on a fresh database, re-uploading it creates **zero** duplicates, and a deliberately messy file still imports its valid rows while explaining every rejection.
-4. Then Phase 5, dashboards and charts.
+2. Check whether **B2 (Vercel)** has cleared. It is now the only open blocker,
+   and a live URL is required, not optional.
+3. **Build Phase 5, dashboards and charts**, on `feat/dashboards-charts`.
+   The database already holds the ten sample lab results, so the charts have
+   real data to render on first run.
 
-Deeper context, if needed: `.docs/01-challenge-analysis.md` (requirements matrix, security analysis, evaluator edge cases) and `.docs/candidate-brief.md` (the authority on scope).
+   Checkpoint: per-patient glucose, HbA1c and SBP trends plus a questionnaire
+   score history, and a clinic view with total patients, completion rate and
+   risk-band distribution. Empty states must look intentional — a patient with
+   no labs, and a clinic with no completed assessments, are both normal.
+
+   Decisions already made: **D-DASH-2** completion rate is completed ÷ all sent,
+   all time, `—` when the denominator is zero. **D-DASH-3** risk distribution
+   counts each patient once, by their latest *completed* assessment.
+   Watch the Recharts trap in `.docs/01-challenge-analysis.md` §7.7: a
+   categorical x-axis mis-orders dates, so out-of-order inserts must still
+   render chronologically.
+
+4. Then Phase 10, the README — still the create-next-app default, and one of
+   the six areas the brief grades.
+
+Deeper context, if needed: `.docs/01-challenge-analysis.md` (requirements
+matrix, security analysis, evaluator edge cases) and `.docs/candidate-brief.md`
+(the authority on scope).
