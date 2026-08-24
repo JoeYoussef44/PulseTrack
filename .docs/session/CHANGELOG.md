@@ -8,6 +8,197 @@ reconstruct it from diffs.
 
 ---
 
+## Session 4 — 2026-08-24 (Mon) — Tier 2, both directions, against the real server
+
+**Tier 2 is complete.** Two merged PRs (#19 push, #20 pull), test suite 188 →
+264. Patients and locally-imported labs push to the national platform; the
+platform's five seeded patients and their 180 observations pull back into the
+same tables and appear on the same charts. What remains for the whole submission
+is the Vercel deployment, which is still B2 and still only Joe's to clear.
+
+The session opened with a decision that turned out to matter more than the code:
+**probe before writing.** Every write to that server is permanent — DELETE is
+disabled — so the two questions session 3 left open were settled with `curl`
+first, and one of the answers changed the design.
+
+### The API guide's own example is unsafe, and the server says so
+
+The guide's conditional create is:
+
+```
+If-None-Exist: identifier=https://challenge.capadev.dev/mrn|MRN-1001
+```
+
+`MRN-1001` is the MRN printed in the supplied CSV template. One read-only query
+before any code was written:
+
+```
+GET /Patient?identifier=…|MRN-1001
+→ total = 5
+  id=189 cand-jihane-l   id=265 cand-maryamhmayed-l   id=278 cand-marwa-l
+  id=340 cand-adham-l    id=360 cand-khalils-l
+```
+
+Five other candidates already hold it. The guide's header matches all five and
+the server returns `412`. The worse case is the one that nearly happened to
+everybody who follows the guide literally: had it matched **one**, we would have
+stored a stranger's resource id, and every later `PUT` would have earned a
+permanent `403` that looks exactly like a bug in our own code.
+
+The analysis had predicted this in §12.2 and proposed `_tag` scoping. What it
+could not say was whether HAPI honours `_tag` inside `If-None-Exist`. The
+five-way collision turned that into a clean experiment rather than a hopeful
+one: an unscoped search matches five, so if `_tag` were ignored the POST would
+return `412`.
+
+```
+POST /Patient  (tag-scoped)  → 201 Created  Location: …/Patient/816/_history/1
+POST /Patient  (identical)   → 200 OK       Location: …/Patient/816/_history/1
+```
+
+`201` proves it. Both open questions closed in about four minutes, and the
+result is the strongest walkthrough talking point in the project — a documented
+integration guide being wrong about its own server, caught by reading rather
+than assuming.
+
+Two smaller things fell out of the same two responses, both of which would have
+been quiet bugs:
+
+- The `Location` header **also** carries the internal `hapi:8080` host, so it
+  must be parsed and never fetched — the same root cause as the pagination
+  links.
+- The id is the segment **before** `_history`, not the last segment. Taking the
+  last one stores the version number as the resource id, and every later write
+  goes to a resource that does not exist.
+
+### Push (PR #19)
+
+The layering is the part worth keeping: `systems.ts` and `mappers.ts` are pure
+and testable, `client.ts` and `config.ts` are `server-only` and are the only
+places the API key exists, and `sync-hooks.ts` is the single seam patient CRUD
+and the CSV importer call. Neither of those two imports the FHIR client, handles
+a FHIR error, or can be broken by one.
+
+That split was not cosmetic. `config.ts` originally held the coding-system
+constants as well, and because it is `server-only`, every mapper test would have
+failed on import. Splitting the constants into `systems.ts` is what made the
+mapping layer — the part most worth testing — testable at all.
+
+**Two sync strategies, deliberately different.** A patient syncs inline, bounded
+at 6 seconds, because "create a patient and it appears on the platform" is what
+the brief asks for. Lab results are queued, because an import is thousands of
+rows at one request each against a documented 120/min: pushing them inside the
+upload request would blow a 60-second Vercel function long before it hit the
+rate limit, and would do so while the clinician is waiting for the validation
+report.
+
+Failure handling was verified by breaking it on purpose:
+
+```
+wrong API key → 401 : "…Check FHIR_API_KEY."          1218ms  (one attempt)
+unreachable host    : "Could not reach the platform"   4302ms  (three, with backoff)
+recovery            : {"ok":true,"fhirId":"818"}    →  SYNCED
+```
+
+The timings are the evidence, not the messages: 1.2s is one attempt, 4.3s is
+three with backoff. A 403 or a 401 is a fact about the world, and retrying it
+spends the rate limit re-learning it.
+
+### Pull (PR #20)
+
+Five patients, 36 observations each, **2 pages each** — the number that proves
+`_count=20` was the right call. At the guide's `_count=50` all 36 return in one
+page, no `next` link is emitted, and the pagination code never executes. It
+would have been an integration that looks paginated and has never paginated
+once.
+
+The interesting design problem was collisions. `fhirObservationId` is unique and
+so is `(patientId, collectedDate, testCode)`, and they disagree whenever a CSV
+row already describes the measurement the platform is now reporting. Letting the
+second constraint throw would fail an entire import over one row that is not
+even wrong.
+
+`reconcile.ts` decides, and is **pure** — which is the whole point, because it
+means every branch is tested in milliseconds instead of by uploading a CSV and
+then importing against a server whose writes cannot be undone. The rule that
+matters: where a measurement is already held locally, the link is attached and
+the **stored value is never touched**. Silently editing a clinician's record
+because a remote resource happens to share a date is how a clinical system stops
+being trustworthy. It is also just D-CSV-2 applied in the other direction.
+
+### Idempotent is not the same as cheap
+
+The most useful finding of the session, and it came from timing runs that had
+already passed.
+
+Both directions were idempotent from the first attempt — identical resource
+counts across a re-push, zero new rows across a re-import. Both were also
+quietly heading for a function timeout:
+
+| | First run | Re-run | After |
+|---|---|---|---|
+| Push, 14 records | 12.8s | — | 3.2s |
+| Import, per patient | 2.4s | 10s | 2.1s |
+
+The push was sequential, so the throttle's concurrency cap of 4 was decorative —
+nothing ever ran concurrently. The re-import was writing 180 unchanged rows back
+one at a time, inside a transaction whose timeout is 20 seconds.
+
+Neither would have failed a test. Both would have failed on Vercel with real
+data volume, in front of an evaluator, as a timeout with no explanation.
+
+**And fixing the first introduced a real race.** An Observation whose patient is
+not yet linked pushes that patient itself, so two results for one unlinked
+patient issue two conditional creates whose searches both complete before either
+insert lands — a duplicate `Patient` on a server where DELETE is disabled. The
+batch now links every referenced patient before sending any observation, which
+removes the race by construction rather than by hoping to lose it. Re-verified
+after the change: still 4 Patients and 10 Observations under our tag.
+
+### What the browser pass added this time
+
+Session 3 established that headless Chrome verification works; this session it
+was routine rather than a discovery, and it still earned its keep:
+
+- The push card rendered an **empty padded strip** under its header when nothing
+  was queued — invisible in the markup, obvious in the screenshot.
+- The pulled data was confirmed *on the charts*, not inferred from row counts:
+  MRN-2001's page draws three trend charts of twelve monthly points each, with
+  the "National platform record" badge and `Linked · 1`.
+- Both loops were driven through the real buttons — five `200`s from
+  `/api/fhir/import`, one from `/api/fhir/sync` — at 1280px and 375px, with no
+  overflow at either width and the API key absent from the page HTML.
+
+One probe lied again, and in a new way: the first push-button test reported
+"no API calls" because it closed **12.7 seconds** into a request that took 12.8.
+The server log settled it in one line. A probe that stops before the thing it is
+measuring proves nothing — the same lesson as session 3's two, wearing a
+different hat.
+
+### Documentation
+
+The README gained a full FHIR section: the integration diagram the brief asks
+for as requirement 4, the idempotency table, the pagination traps, the
+transient-versus-terminal failure table, and four new decisions (D-16..D-19)
+each with its cost stated. All four Mermaid diagrams were parsed with mermaid's
+own parser rather than eyeballed — a broken diagram is the first thing an
+evaluator would see.
+
+### Left undone
+
+**B2 (Vercel) is now the only thing standing between this and submission.** It
+blocks the last Tier 1 item *and* Tier 2's Definition of Done, which requires
+the import to complete from the deployed URL without a function timeout. The
+local per-patient measurements (2.1–2.4s) suggest it will be comfortable, but
+that is a prediction and not a measurement, and this project's own history says
+which of those to trust.
+
+Also still open, both unchanged from session 3: rotate the Resend key, and
+settle the demo data — including the patient row carrying a real personal email
+address.
+
+---
+
 ## Session 3 — 2026-08-24 (Mon) — README, browser QA, and three defects found by using it
 
 **Tier 1 is complete except the live deployment.** Six merged PRs (#12–#17).

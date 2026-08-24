@@ -1,15 +1,16 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-24**, session 3 (README, browser QA, acceptance
-> checklist, and three defects found by using the app).
+> Last updated: **2026-08-24**, session 4 (Tier 2 — FHIR push and pull, both
+> verified against the live server).
 
 ---
 
 ## 1. Where we are
 
-**Tier 1 is complete except the live deployment**, which is blocked on the
-Vercel account and on nothing else. Six PRs merged this session (#12–#17).
+**Tier 1 and Tier 2 are both complete except the live deployment**, which is
+blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
+#12–#20.
 
 | Phase | Status |
 |---|---|
@@ -21,10 +22,10 @@ Vercel account and on nothing else. Six PRs merged this session (#12–#17).
 | 5 · Dashboards + charts | ✅ Complete |
 | 10 · README + diagrams | ✅ Complete (PR #12) |
 | 6 · Tier 1 gate — deploy + QA | 🟡 **QA done** (#13, #15, #16, #17). Deploy blocked on B2 |
-| 7 · FHIR client + push | ⬜ **NEXT** — not blocked |
-| 8 · FHIR pull + pagination | ⬜ Not started |
-| 9 · Tier 2 gate | ⬜ |
-| 11 · Submit | ⬜ Due Wed 2026-08-26 |
+| 7 · FHIR client + push | ✅ Complete (PR #19) |
+| 8 · FHIR pull + pagination | ✅ Complete (PR #20) |
+| 9 · Tier 2 gate | 🟡 Verified locally against the live server. Deployed run blocked on B2 |
+| 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
 ### Tier 1 against the brief's own six areas
@@ -38,6 +39,16 @@ Vercel account and on nothing else. Six PRs merged this session (#12–#17).
 | Dashboards | 100% |
 | Documentation (README) | 100% |
 | Live Vercel URL | 0% — **B2, the only thing outstanding** |
+
+### Tier 2 against the brief's own four requirements
+
+| Requirement | Done |
+|---|---|
+| 1 · Push patients and lab results | 100% |
+| 2 · Pull the seeded patients and history | 100% — 5 patients, 180 observations |
+| 3 · Auth, failures, retries, no double-import | 100% |
+| 4 · Integration diagram in the README | 100% |
+| Import running from the **deployed** URL | 0% — blocked on B2 |
 
 ---
 
@@ -110,8 +121,14 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 Measured at the end of session 3:
 
 ```
-patients=4  assessments=13 (completed=9 expired=1 sent=3)  labs=10  uploads=1  rate=69%
+before session 4:  patients=4  assessments=13  labs=10   uploads=1  rate=69%
+after  session 4:  patients=9  assessments=13  labs=190  uploads=1  rate=69%
+                   (+5 seeded patients and +180 observations pulled from FHIR)
 ```
+
+**The FHIR-imported rows are not drift** — they are Tier 2 working, they are
+reproducible with one click from `/integrations/fhir`, and an evaluator should
+see them. The pre-existing drift is separate and still needs a decision:
 
 The documented state — quoted in the README, several PR bodies and earlier
 revisions of this file — is **3 patients, 8 assessments, 88%**. The drift came
@@ -126,8 +143,9 @@ Two things need a decision before submitting:
    holding a real personal address is the wrong thing to hand an evaluator, and
    the brief asks for fabricated data only. Remove it or change the address.
 
-Everything is reproducible from `npm run db:seed` plus one upload of
-`.docs/lab-results-sample-clean.csv` through `/labs/upload`.
+Everything is reproducible from `npm run db:seed`, one upload of
+`.docs/lab-results-sample-clean.csv` through `/labs/upload`, and one **Import**
+on `/integrations/fhir`.
 
 ### 4a. Email now sends, with one hard constraint
 
@@ -158,7 +176,7 @@ npm run dev          # dev server
 npm run build        # production build
 npm start            # serve the build
 npm run lint         # eslint
-npm test             # vitest (188 tests)
+npm test             # vitest (264 tests)
 npm run db:migrate   # prisma migrate dev
 npm run db:deploy    # prisma migrate deploy (production)
 npm run db:seed      # idempotent seed
@@ -206,11 +224,13 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **`<select>` + `defaultValue`** | React applies `defaultValue` to a select **only on mount**, so a select still resets even when the text inputs are fixed. Key it on the echoed value to force a remount. |
 | **Next 16 error boundaries** | The recovery prop is **`retry`**, not `reset`. `global-error.tsx` must supply its own `<html>`/`<body>` and gets **no global CSS**, so Tailwind classes do nothing there — style it inline. |
 | **Resend free tier** | Delivers only to the account owner's own address until a domain is verified. Fabricated recipients never receive mail regardless. See §4a. |
-| **FHIR pagination** | The server's `next` link points at `http://hapi:8080` — its **internal Docker host**, unreachable externally. Following it verbatim (as the API guide instructs) silently truncates every import to page one. `lib/fhir/pagination.ts` rebases onto our configured public base. |
+| **FHIR pagination** | The server's `next` link points at `http://hapi:8080` — its **internal Docker host**, unreachable externally. Following it verbatim (as the API guide instructs) silently truncates every import to page one. `lib/fhir/pagination.ts` rebases onto our configured public base. **Confirmed working end to end: 36 observations over 2 pages per patient.** |
 | **FHIR page size** | Each seed patient has **36** observations, not 180. At the guide's `_count=50` nothing paginates. We use **`_count=20`** so the loop genuinely runs (20 + 16). |
 | **FHIR `bundle.total`** | Absent on paged responses. Loop control must depend on the `next` link only. |
-| **FHIR ownership** | Seed patients are tagged `cand-admin`, not us. `_tag` works as a search param. We currently own 0 resources. |
-| **FHIR conditional create** | Untested — needs a write, and **writes are permanent (DELETE is disabled)**. Scope `If-None-Exist` with our `_tag` or a cross-candidate MRN collision binds us to someone else's resource. |
+| **FHIR ownership** | Seed patients are tagged `cand-admin`, not us. `_tag` works as a search param. **We now own 4 Patients (816–819) and 10 Observations.** |
+| **FHIR conditional create — RESOLVED** | `_tag` **is** honoured inside `If-None-Exist`. Proof rather than inference: five other candidates already hold `MRN-1001`, so an unscoped search matches five and returns `412`; the tag-scoped POST returned `201`, and an identical second POST returned `200` with the same id (816). Writes are still permanent — DELETE is disabled. |
+| **FHIR `Location` header** | Also carries the internal `hapi:8080` host, so it must be parsed and never fetched. The id is the segment **before** `_history`, not the last segment — reading the last one stores the version number as the resource id. |
+| **FHIR conditional-create body** | This server *does* return a body on both `201` and `200`. The empty-body case is still handled, because the id is recovered from `Location` either way. |
 | **Prisma 7** | `datasourceUrl` is gone; a driver adapter is mandatory. We use `@prisma/adapter-pg`. Client generates as **TypeScript** into `lib/generated/prisma`. |
 | **Next 16** | `middleware.ts` is now **`proxy.ts`**, and it needs a real function export. |
 | **Auth.js v5** | Needs `trustHost: true` — it only auto-trusts on Vercel. Without it every request 500s with `UntrustedHost`. |
@@ -231,6 +251,29 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **Dashboard filters** | Completion rate is all-time and the risk distribution is a register snapshot, so a global date filter would falsify them. The date range scopes the uploads card only, by design. |
 
 ---
+
+### 6c. Two performance traps in the sync, both found by timing it
+
+Neither was a bug in the usual sense — both were correct code that was
+needlessly slow, and both were only visible because the run was timed.
+
+- **A sequential batch.** 14 records took **12.8s** pushed one at a time, a
+  fifth of a Vercel function's budget, while the throttle's concurrency cap of
+  4 sat unused because nothing ever ran concurrently. Now 3.2s.
+  **But making it concurrent introduced a real race:** an Observation whose
+  patient is not yet linked pushes that patient itself, so two results for one
+  unlinked patient issue two conditional creates whose searches both complete
+  before either insert lands — a duplicate Patient on a server where DELETE is
+  disabled. `pushPendingBatch` now links every referenced patient *before*
+  sending any observation.
+- **A re-import that rewrote everything.** The first import ran at 2.4s per
+  patient; the second took **10s**, writing 180 unchanged rows back one at a
+  time inside a transaction whose timeout is 20s. Linked rows are now compared
+  before being written, so an unchanged re-import writes nothing: 2.1s.
+
+The general lesson: **idempotent is not the same as cheap.** Both re-runs were
+correct — same counts, no duplicates — and both were quietly heading for a
+function timeout at any real data volume.
 
 ### 6a. Browser verification works — and how to do it
 
@@ -303,6 +346,9 @@ app/(auth)/login          public
 app/(dashboard)/*         requires a session
 app/assessment/[token]    public — authorised by the token alone
 app/api/auth/*            Auth.js
+app/api/fhir/sync         push one bounded batch     [new, session 4]
+app/api/fhir/import       pull one seeded MRN        [new, session 4]
+app/(dashboard)/integrations/fhir   the integration page   [new, session 4]
 
 app/error.tsx             public-route boundary        [new, session 3]
 app/(dashboard)/error.tsx in-layout boundary, keeps nav [new, session 3]
@@ -312,7 +358,9 @@ app/not-found.tsx         404                           [new, session 3]
 lib/assessments/  definition (loads official JSON) · scoring (pure) · token · service
 lib/labs/         test-catalog · parse · classify (pure) · series (pure) · service (IO)
 lib/dashboard/    metrics (pure) · service (IO)
-lib/fhir/         pagination    [client + mappers still to build]
+lib/fhir/         systems · pagination · mappers · reconcile   (pure, tested)
+                  config · client · throttle · errors           (server-only, holds the key)
+                  push · pull · status · sync-hooks             (services)
 lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
 lib/actions/      server actions — every one calls requireClinician()
@@ -347,6 +395,24 @@ Recorded in `.docs/01-challenge-analysis.md` §16 and now also in the **README's
 - **D-QA-1** Verification tooling (`puppeteer-core`) lives in the scratchpad, **never in `package.json`**.
 - **D-QA-2** Restore the demo database after any test that mutates it — its figures are quoted in the README, `state.md` and several PR bodies. *(Currently violated; see §4.)*
 
+New in session 4:
+
+- **D-FHIR-6** `conditionalCreate()` appends the `_tag` scope itself, so no
+  caller can omit it. Verified: `_tag` **is** honoured inside `If-None-Exist`.
+- **D-FHIR-7** Ownership is read from the response's own `meta.tag` before a
+  resource is treated as writable — never inferred from the request succeeding.
+- **D-FHIR-8** A patient syncs **inline** (6s budget) because the brief asks for
+  a patient to sync when created; lab results are **queued** because a CSV is
+  thousands of rows at one request each against a 60s function.
+- **D-FHIR-9** On an import collision with a locally-held measurement, the link
+  is attached and the **stored value is never overwritten** — the same rule as
+  D-CSV-2. Disagreements are counted and shown, not resolved.
+- **D-FHIR-10** `/api/fhir/import` takes MRNs from an allow-list, so an
+  authenticated session cannot be used to read arbitrary records off a shared
+  server.
+- **D-FHIR-11** Email and phone are **not** pushed as `telecom`. Reads are open
+  to every other candidate on that server.
+
 New in session 3:
 
 - **D-DB-1** The pg pool is configured explicitly rather than left to defaults:
@@ -367,7 +433,7 @@ New in session 3:
 ## 8b. Git workflow — follow this for every remaining phase
 
 Published at **https://github.com/JoeYoussef44/PulseTrack**, merge-based
-topology, 17 merged PRs, branches kept after merge.
+topology, 20 merged PRs, branches kept after merge.
 
 | PR | Branch | Contents |
 |---|---|---|
@@ -383,41 +449,44 @@ topology, 17 merged PRs, branches kept after merge.
 | #15 | `docs/tier1-acceptance-checklist` | 112-check QA plan + PDF |
 | #16 | `fix/duplicate-mrn-and-error-states` | P2002 crash, form value retention, four boundaries |
 | #17 | `fix/db-cold-start-timeout` | Neon cold start, bounded pool |
+| #19 | `feat/fhir-push` | FHIR client, mappers, retry/throttle, push, integration page |
+| #20 | `feat/fhir-pull-pagination` | seeded import, pagination, reconciliation, README diagram |
 
 **Every remaining phase ships the same way** — branch, incremental commits,
 tests green, PR with real test output in the body, `--merge` (never squash).
 
-Remaining branches: `feat/fhir-push`, `feat/fhir-pull-pagination`.
+No feature branches remain. What is left is deployment and pre-submission QA.
 
 ---
 
 ## 9. Next session — start here
 
-1. **B2 is Joe's and is the only incomplete Tier 1 item.** Once the account is
-   available: `vercel link`, every `.env` value as a project env var, build
-   command `prisma migrate deploy && next build`, run the seed against
-   production so the evaluator's login exists, set `APP_BASE_URL` to the
-   deployed origin, then re-run the acceptance checklist against the live URL.
+Tier 1 and Tier 2 are both feature-complete. **Everything that remains is either
+Joe's to unblock or is pre-submission work.**
 
-2. **Settle the demo data (§4) and rotate the Resend key (A1).** Both are small
-   and both are visible to an evaluator or a security reviewer.
+1. **B2 (Vercel) is now the only thing standing between this and submission.**
+   It blocks the last Tier 1 item *and* Tier 2's Definition of Done, which
+   requires the import to complete from the deployed URL without a function
+   timeout. Once the account is available: `vercel link`, every `.env` value as
+   a project env var (**including the three `FHIR_` ones**), build command
+   `prisma migrate deploy && next build`, run the seed against production, set
+   `APP_BASE_URL` to the deployed origin, then:
+   - run the seed import from the live URL and confirm no function timeout —
+     each patient measured 2.1–2.4s locally, so this should be comfortable
+   - push a patient from the live URL and confirm it lands under our tag
+   - re-run the acceptance checklist against the live URL
 
-3. **Tier 2 (Phase 7, `feat/fhir-push`) is not blocked and can start now.**
-   Push first — the smaller, self-contained half. The reconnaissance findings in
-   §6 are the ones that otherwise cost hours. Resolve whether HAPI accepts
-   `_tag` inside `If-None-Exist` with a real write early, because **writes are
-   permanent — DELETE is disabled on that server.**
+2. **Settle the demo data (§4) and rotate the Resend key (A1).** Both small,
+   both visible to an evaluator or a security reviewer. Note the demo figures
+   have moved again — see §4.
 
-   Tier 2's own Definition of Done (§20) also requires the import to complete
-   **from the deployed URL** without a function timeout, so Tier 2 cannot be
-   fully closed while B2 is open either.
+3. **The remaining 22 acceptance checks.** The two that matter most are
+   unchanged: clone into a clean directory and follow the README literally, and
+   build the one deliberately ugly CSV the brief promises to test with.
 
-4. **Tier 2 adds to the README** — requirement 4 is an integration diagram, and
-   §20 wants the idempotency design explained there. The README is structured to
-   take that as a new section rather than a rewrite.
-
-Tier 3 stays out of scope: its Definition of Done opens with "Tier 1 and Tier 2
-are complete, deployed and QA'd first."
+4. **Tier 3 stays out of scope** unless everything above is done — its own
+   Definition of Done opens with "Tier 1 and Tier 2 are complete, deployed and
+   QA'd first."
 
 Deeper context: `.docs/01-challenge-analysis.md` (requirements matrix, security
 analysis, evaluator edge cases), `.docs/03-tier1-acceptance-checklist.html`
