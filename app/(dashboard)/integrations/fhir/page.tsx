@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ImportPanel } from "@/components/fhir/import-panel";
 import { PushPanel } from "@/components/fhir/push-panel";
 import { Alert, Badge, Card, CardHeader, EmptyState } from "@/components/ui";
 import { requireClinician } from "@/lib/auth/session";
 import { readIntegrationStatus, readSyncFailures } from "@/lib/fhir/status";
-import { TAG_SYSTEM } from "@/lib/fhir/systems";
+import { SEED_MRNS, TAG_SYSTEM } from "@/lib/fhir/systems";
 import { toIsoDate } from "@/lib/validation/patient";
 
 export const metadata: Metadata = { title: "National platform" };
@@ -119,7 +120,7 @@ export default async function FhirIntegrationPage() {
         </dl>
       </Card>
 
-      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-rule bg-rule sm:grid-cols-2 lg:grid-cols-3">
         <Figure
           label="Patients linked"
           value={`${status.push.patientsLinked} / ${status.push.patientsTotal}`}
@@ -144,6 +145,16 @@ export default async function FhirIntegrationPage() {
           }
           detail={status.push.lastSyncedAt ? undefined : "no push yet"}
         />
+        <Figure
+          label="Patients imported"
+          value={status.pull.patientsImported}
+          detail="pulled from the platform"
+        />
+        <Figure
+          label="Results imported"
+          value={status.pull.resultsImported}
+          detail="charted alongside local data"
+        />
       </div>
 
       <PushPanel
@@ -151,6 +162,12 @@ export default async function FhirIntegrationPage() {
         failed={status.push.failed}
         forbidden={status.push.forbidden}
         disabled={!status.configured}
+      />
+
+      <ImportPanel
+        mrns={SEED_MRNS}
+        disabled={!status.configured}
+        alreadyImported={status.pull.resultsImported}
       />
 
       <Card>
