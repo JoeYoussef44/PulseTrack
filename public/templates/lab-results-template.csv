@@ -1,0 +1,3 @@
+mrn,collected_date,test_code,test_name,value,unit,ref_low,ref_high
+MRN-1001,2026-06-01,GLU-F,Fasting Glucose,105,mg/dL,70,99
+MRN-1001,2026-06-01,HBA1C,Hemoglobin A1c,6.8,%,4.0,5.6
