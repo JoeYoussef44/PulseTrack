@@ -64,6 +64,21 @@ export const authConfig = {
 
       if (isPublicPath(pathname)) return true;
 
+      /**
+       * API routes answer for themselves.
+       *
+       * A `fetch()` that meets an edge redirect follows it and receives the
+       * login page's HTML with a 200. The caller then tries to parse that as
+       * JSON, so an expired session surfaces as an unexplained blank result
+       * rather than "you have been signed out". A route handler returning a
+       * real 401 is the only response shape a fetch caller can act on.
+       *
+       * This exempts them from the *redirect*, not from authorisation. Every
+       * route handler must call `requireClinicianApi()` itself — that is the
+       * layer which actually holds, here as everywhere else.
+       */
+      if (pathname.startsWith("/api/")) return true;
+
       return Boolean(auth?.user);
     },
 
