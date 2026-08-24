@@ -180,3 +180,26 @@ export function bandTone(
       return "neutral";
   }
 }
+
+/**
+ * The status to show for a stored assessment.
+ *
+ * Expiry is derived rather than swept by a background job, so a row can still
+ * read SENT after its expiry has passed. Deriving it in one place keeps the
+ * clinician's table and the patient's page from ever disagreeing.
+ *
+ * `now` is a parameter, not a call to Date.now(), so this stays pure and can
+ * be tested at a boundary.
+ */
+export function displayStatus(
+  assessment: { status: AssessmentStatus; expiresAt: Date },
+  now: Date,
+): AssessmentStatus {
+  if (
+    assessment.status === AssessmentStatus.SENT &&
+    assessment.expiresAt.getTime() <= now.getTime()
+  ) {
+    return AssessmentStatus.EXPIRED;
+  }
+  return assessment.status;
+}

@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { SendAssessment } from "@/components/assessments/send-assessment";
 import { DeletePatient } from "@/components/patients/delete-patient";
 import { Badge, Button, Card, CardHeader, EmptyState } from "@/components/ui";
-import { bandTone } from "@/lib/assessments/service";
+import { bandTone, displayStatus } from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { toIsoDate } from "@/lib/validation/patient";
@@ -69,6 +69,13 @@ export default async function PatientDetailPage({
   // An unknown id is a 404, not a crash and not an empty page.
   if (!patient) notFound();
 
+  // Captured once, before rendering, so the render itself stays pure.
+  const now = new Date();
+  const assessments = patient.assessments.map((a) => ({
+    ...a,
+    displayStatus: displayStatus(a, now),
+  }));
+
   const isSeeded = patient.fhirOwnership === "EXTERNAL_SEED";
 
   return (
@@ -130,7 +137,7 @@ export default async function PatientDetailPage({
             />
           }
         />
-        {patient.assessments.length === 0 ? (
+        {assessments.length === 0 ? (
           <EmptyState
             title="No assessments sent"
             description="Send this patient a DSMA-8 self-assessment to start tracking their score over time."
@@ -153,12 +160,8 @@ export default async function PatientDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {patient.assessments.map((a) => {
-                  // Expiry is derived, not swept by a job, so a row still
-                  // marked SENT past its expiry displays as expired here.
-                  const expired =
-                    a.status === "SENT" && a.expiresAt.getTime() <= Date.now();
-                  const status = expired ? "EXPIRED" : a.status;
+                {assessments.map((a) => {
+                  const status = a.displayStatus;
 
                   return (
                     <tr
