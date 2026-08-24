@@ -70,7 +70,7 @@ rather than inferred.
 
 | # | Blocker | Needs | Impact |
 |---|---|---|---|
-| ~~B1~~ | ~~**`git push` rejected**~~ **CLEARED 2026-08-24** | Root cause was *not* a missing login: `JoeYoussef44` was already in the keyring but was not the **active** account. `gh auth switch --user JoeYoussef44` fixed it. That account has admin/push. | Resolved. Repo is published with 4 merged PRs. |
+| ~~B1~~ | ~~**`git push` rejected**~~ **CLEARED 2026-08-24** | Root cause was *not* a missing login: `JoeYoussef44` was already in the keyring but was not the **active** account. `gh auth switch --user JoeYoussef44` fixed it. That account has admin/push. | Resolved. Repo is published; 10 merged PRs. |
 | B2 | **Vercel account recovery** | Joe to finish account setup | A live URL is **required, not optional** per the brief. Also delays discovering production-only failures: serverless function timeout on the FHIR import, and Postgres connection exhaustion. |
 | B3 | **No Resend key** | Optional | Email falls back to a console adapter. The flow still demos: the clinician gets a copy-link after sending. Resend's free tier only delivers to the account owner's own address anyway. |
 
@@ -95,6 +95,21 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 
 **Database:** Neon, Postgres 17.11, region AWS us-east-1 (matches Vercel's default `iad1`).
 
+**What the demo database currently holds** — all fabricated, and all
+reproducible from `npm run db:seed` plus one upload of the supplied sample CSV:
+
+| | |
+|---|---|
+| 1 clinician | `clinician@pulsetrack.local` |
+| 3 patients | `MRN-1001` Jane Doe · `MRN-1002` Samir Aoun · `MRN-1003` Rana Bitar |
+| 8 assessments | 7 completed + 1 expired unanswered, so completion reads 88% not 100% |
+| 10 lab results | the supplied `lab-results-sample-clean.csv`, source `CSV` |
+| 1 lab upload | the import that produced them |
+
+Leave the lab results in place: they are what gives the charts something to
+draw on first run. If they are ever cleared, re-import
+`.docs/lab-results-sample-clean.csv` through `/labs/upload`.
+
 ---
 
 ## 5. Commands
@@ -104,7 +119,7 @@ npm run dev          # dev server
 npm run build        # production build
 npm start            # serve the build
 npm run lint         # eslint
-npm test             # vitest (85 tests)
+npm test             # vitest (188 tests)
 npm run db:migrate   # prisma migrate dev
 npm run db:deploy    # prisma migrate deploy (production)
 npm run db:seed      # idempotent seed
@@ -117,7 +132,11 @@ npx prisma generate  # regenerate client into lib/generated/prisma
 NODE_OPTIONS="--conditions=react-server" npx tsx script.ts
 ```
 
-Without that flag, `server-only` throws — which is the guard working correctly, not a bug.
+Without that flag, `server-only` throws — which is the guard working correctly,
+not a bug. Two more traps in the same five minutes: the script needs
+`import "dotenv/config"` as its first line (tsx does not load `.env` for you),
+and it must wrap its body in `async function main()` — tsx compiles to CJS, so
+a top-level `await` is a syntax error.
 
 **Killing a stuck dev server** (Windows; `taskkill` flags get mangled through git-bash):
 
@@ -193,6 +212,30 @@ Recorded in `.docs/01-challenge-analysis.md` §16 as `D-*` and §23. The ones th
 - **D-DASH-3** Risk distribution counts each patient once, by their latest *completed* assessment.
 - **D-FHIR-2** Never push back data we pulled.
 - **D-FHIR-5** Rebase `next` links (see §6).
+
+Decided during implementation in session 2, and **not yet folded back into the
+analysis document** — this list is the authority on them for now:
+
+- **D-CSV-5** A mismatched `unit` is stored **exactly as reported** and flagged,
+  never relabelled to the canonical unit. Rewriting `5.8 mmol/L` as `5.8 mg/dL`
+  would turn a normal glucose into a fatal-looking one while appearing to be a
+  tidy-up. A pure case/spacing difference (`MG/DL`) normalises silently.
+- **D-CSV-6** A malformed or inverted `ref_low`/`ref_high` **warns and falls back
+  to the catalog range**; it never rejects the row. A reference range is chart
+  furniture, not a measurement.
+- **D-API-1** API routes are exempt from the edge redirect and authorise
+  themselves with `requireClinicianApi()`. A `fetch` that meets a 307 follows it
+  and parses login HTML as JSON. **Any new route handler must call it** — the
+  edge no longer covers `/api/*`.
+- **D-DASH-4** Risk bands render as **one labelled bar per band, never a stacked
+  bar or pie**. The four band colours are a continuous hue ramp, so neighbours
+  are inherently close (moderate↔high measured ΔE 8.0 normal / 0.4 deuteran).
+  Nothing may put them in touching segments. See §6.
+- **D-DASH-5** The dashboard's date filter scopes the **uploads card only**.
+  Completion rate is all-time (D-DASH-2) and the risk distribution is a register
+  snapshot, so a global date filter would falsify both rather than narrow them.
+- **D-CHART-1** One measure per chart, **never a dual axis**. Two y-scales align
+  arbitrarily, so a shared plot asserts a correlation the data does not contain.
 
 ---
 
