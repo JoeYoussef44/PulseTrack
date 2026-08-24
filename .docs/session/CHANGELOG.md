@@ -102,10 +102,82 @@ Test suite 85 → 151.
 The database deliberately retains the ten sample lab results, so Phase 5's
 charts have real data on first run.
 
+### Phase 5 — dashboards and charts (PRs #8, #9)
+
+Four single-series trend charts per patient (glucose, HbA1c, systolic, DSMA-8
+score), and a clinic overview: hero patient count, completion-rate meter, risk
+bands, and recent imports with a date-range filter.
+
+**One measure per chart, never a dual axis.** Two y-scales align arbitrarily,
+so a shared plot asserts a correlation the data does not contain. Three
+measures, three charts.
+
+### The palette decision, made on evidence
+
+The risk distribution was built first as a stacked bar. Running the four band
+colours through a colour-vision validator put **moderate↔high at ΔE 8.0 for
+normal vision and 0.4 under deuteranopia** — the same colour, to a deuteranope.
+
+Re-stepping the palette only moved the collision to orange↔red, which is the
+tell: green→yellow→orange→red is a *continuous hue ramp*, so neighbouring steps
+are always close, and stacking them makes hue the channel that has to separate
+them. So the **form** changed rather than the colours: one labelled bar per
+band. No two fills touch, every bar carries its own name and number, and each
+band clears 3:1 against the surface alone. The questionnaire's traffic-light
+semantics survive intact.
+
+### A requirement I had missed
+
+After Phase 5 I checked the work against the Definition of Done rather than
+assuming it was complete, and found the brief asks the clinic view for
+*"recent uploads with at least one filter (e.g. date range)"*. PR #8 had the
+aggregates and risk bands but no uploads panel and no filter. PR #9 closes it.
+
+Its one deliberate deviation: the filter scopes that card, not the page.
+Completion rate is all-time by decision (D-DASH-2) and the risk distribution is
+a register snapshot, so a global date filter would not narrow those to a smaller
+truth — it would make them a different and misleading one.
+
+### Seed
+
+A fresh install previously showed four empty states, so the charts demonstrated
+nothing. The seed now creates an assessment history with real trajectories
+(Jane improves 17→11→6, Samir holds, Rana deteriorates 13→20), plus one expired
+unanswered invitation so the completion rate is honestly 7/8 rather than a
+suspicious 7/7.
+
+Every seeded assessment is completed or expired. That is what makes a
+*deterministic* token hash safe — which is in turn what keeps the seed
+idempotent — because the gate refuses both states before it looks at anything
+else. No seeded row carries a working link. Answers are generated to genuinely
+sum to the stored score.
+
+### Verified against the live database
+
+The risk distribution was the interesting one. Jane has three completed
+assessments including a High-risk one, and **High risk renders 0** — she is
+counted once, by her latest. If the code counted assessments rather than
+patients, that cell would read 1. Completion rate showed 88% (7 of 8), and the
+counts summed to the patient total.
+
+All three patients' charts were checked over authenticated HTTP through their
+`role="img"` labels, which carry the real values — including the single-reading
+case that exercises the zero-width-domain padding.
+
+**Stated limitation:** no browser tooling was available, and Recharts renders
+its SVG client-side (`renderToStaticMarkup` returns a 127-byte wrapper and no
+`<svg>`; jsdom would not help, having no layout). So the chart *data*,
+structure and accessible labels are verified, but **the plotted charts were
+never seen**. Same for 375px usability. Both need a browser before submission.
+
+Test suite 151 → 188.
+
 ### Left undone
 
-Phase 5 (dashboards and charts) is next. The README is still the
-create-next-app default. **B2 (Vercel) is now the only open blocker.**
+**Tier 1 is feature-complete.** What remains is the README — one of the six
+graded areas, still the create-next-app default — and the deployment.
+**B2 (Vercel) is still the only open blocker**, and the README does not depend
+on it.
 
 ---
 
