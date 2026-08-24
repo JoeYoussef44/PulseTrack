@@ -3,8 +3,10 @@
  *
  * The server allows 120 requests/minute and the brief makes handling `429`
  * part of the exercise. Reacting to a 429 is necessary but not sufficient: a
- * seed import is ~15 requests per patient, so an unthrottled client would earn
- * the limit rather than avoid it, and every retry lands the run further behind.
+ * seed import is 3 requests per patient and a push is one per record, so a
+ * clinician importing and then syncing a CSV can put a few hundred requests
+ * through in under a minute — enough to earn the limit rather than avoid it,
+ * and every retry then lands the run further behind.
  *
  * So this throttles *proactively* to a deliberately lower ceiling, leaving
  * headroom for retries and for the fact that we cannot see other tabs of the

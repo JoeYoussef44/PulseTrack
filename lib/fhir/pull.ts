@@ -85,11 +85,11 @@ export function describeSkip(reason: ObservationSkipReason): string {
 /**
  * Imports one seeded patient and their whole observation history.
  *
- * One MRN per call, deliberately. Five patients at 36 observations each is
- * three pages of search results and a few hundred database rows; doing all
- * five in one request would be the single slowest thing in the app and the
- * most likely to meet Vercel's 60-second ceiling. Per-patient also means a
- * patient that fails does not take the other four down with it, and the UI has
+ * One MRN per call, deliberately. Each patient is three requests to the
+ * platform — one search plus two pages of observations — and doing all five in
+ * one invocation makes this the single slowest thing in the app and the most
+ * likely to meet Vercel's 60-second ceiling. Per-patient also means a patient
+ * that fails does not take the other four down with it, and the UI has
  * something real to show as progress.
  */
 export async function importSeedPatient(
