@@ -1,0 +1,213 @@
+// PulseTrack — data model
+// See .docs/01-challenge-analysis.md §10 for the reasoning behind each constraint.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Mirrors FHIR R4 Patient.gender so the mapping needs no lookup table.
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+/// Brief: status per assessment is `sent -> completed` or `sent -> expired`.
+enum AssessmentStatus {
+  SENT
+  COMPLETED
+  EXPIRED
+}
+
+/// The entire supported test vocabulary. Anything else is a rejected CSV row.
+enum TestCode {
+  GLU_F // Fasting Glucose      -> LOINC 1558-6
+  HBA1C // Hemoglobin A1c       -> LOINC 4548-4
+  SBP // Systolic Blood Pressure -> LOINC 8480-6
+}
+
+/// Where a lab result came from. Lets CSV and FHIR data share one table
+/// and therefore one chart, which is what Tier 2 requirement 2 asks for.
+enum LabSource {
+  CSV
+  FHIR
+  MANUAL
+}
+
+/// The shared FHIR server enforces ownership: we may only modify what we
+/// created. Seed data and other candidates' resources are read-only, so we
+/// must know which category a record falls into before attempting a write.
+enum FhirOwnership {
+  NONE // never pushed
+  OWNED // created by us, carries our candidate tag, safe to PUT
+  EXTERNAL_SEED // pulled from the server, read-only to us
+}
+
+enum FhirSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  FORBIDDEN // 403 — a permanent state, not a transient error worth retrying
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+/// The only account holder in the system. Patients never have accounts.
+model Clinician {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  labUploads LabUpload[]
+
+  @@map("clinicians")
+}
+
+model Patient {
+  id          String   @id @default(cuid())
+  /// Medical record number. The key everything else hangs off — labs,
+  /// assessments and the national platform all identify a person by it.
+  mrn         String   @unique
+  fullName    String
+  /// @db.Date, not a timestamp: a birth date has no time zone, and storing
+  /// it as one causes off-by-one-day rendering bugs.
+  dateOfBirth DateTime @db.Date
+  sex         Sex
+  /// Nullable at create; required at send-assessment time with a clear message.
+  email       String?
+  phone       String?
+
+  // --- FHIR linkage (Tier 2) ---
+  fhirPatientId    String?         @unique
+  fhirOwnership    FhirOwnership   @default(NONE)
+  fhirSyncStatus   FhirSyncStatus?
+  fhirLastSyncedAt DateTime?
+  fhirLastError    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assessments Assessment[]
+  labResults  LabResult[]
+
+  @@index([fullName])
+  @@map("patients")
+}
+
+model Assessment {
+  id                   String @id @default(cuid())
+  patientId            String
+  questionnaireId      String @default("dsma-8")
+  questionnaireVersion String @default("1.0")
+
+  /// SHA-256 of the emailed token. The raw token is never persisted, so a
+  /// database dump does not hand out working links.
+  tokenHash String   @unique
+  sentAt    DateTime @default(now())
+  /// sentAt + 7 days. Expiry is derived on read rather than swept by a cron.
+  expiresAt DateTime
+
+  status      AssessmentStatus @default(SENT)
+  completedAt DateTime?
+  /// Null until completed. Not defaulted to 0, because 0 is a valid score.
+  totalScore  Int?
+  riskBand    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  answers AssessmentAnswer[]
+
+  @@index([patientId, sentAt])
+  @@index([status, expiresAt])
+  @@map("assessments")
+}
+
+model AssessmentAnswer {
+  id           String @id @default(cuid())
+  assessmentId String
+  questionId   String
+  /// 0-3, validated in the scoring function before it ever reaches here.
+  score        Int
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  /// The database-level guarantee that a double-submit cannot write 16 answers.
+  @@unique([assessmentId, questionId])
+  @@map("assessment_answers")
+}
+
+/// One CSV import operation, so the clinic dashboard can show recent uploads.
+model LabUpload {
+  id                    String   @id @default(cuid())
+  filename              String
+  uploadedByClinicianId String
+  uploadedAt            DateTime @default(now())
+
+  totalRows             Int @default(0)
+  acceptedCount         Int @default(0)
+  rejectedCount         Int @default(0)
+  /// Rows already on file. Distinct from rejected: "already imported" is not
+  /// an error, and separating them is what makes a corrected re-upload read
+  /// correctly in the report.
+  skippedDuplicateCount Int @default(0)
+
+  uploadedBy Clinician   @relation(fields: [uploadedByClinicianId], references: [id], onDelete: Restrict)
+  labResults LabResult[]
+
+  @@index([uploadedAt])
+  @@map("lab_uploads")
+}
+
+model LabResult {
+  id          String  @id @default(cuid())
+  patientId   String
+  /// Null for FHIR-pulled results, which arrive without an upload.
+  labUploadId String?
+
+  /// @db.Date for the same reason as dateOfBirth.
+  collectedDate DateTime @db.Date
+  testCode      TestCode
+  testName      String
+  value         Decimal  @db.Decimal(10, 3)
+  unit          String
+  /// Nullable: the seeded FHIR observations carry no referenceRange, and the
+  /// brief does not make these columns required in the CSV.
+  refLow        Decimal? @db.Decimal(10, 3)
+  refHigh       Decimal? @db.Decimal(10, 3)
+
+  source LabSource
+
+  // --- FHIR linkage (Tier 2) ---
+  fhirObservationId String?         @unique
+  fhirSyncStatus    FhirSyncStatus?
+  fhirLastError     String?
+
+  createdAt DateTime @default(now())
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  labUpload LabUpload? @relation(fields: [labUploadId], references: [id], onDelete: SetNull)
+
+  /// The brief's duplicate rule — same MRN + date + test — enforced in the
+  /// database, not just in the import code. This is what makes the guarantee
+  /// hold when two uploads run at the same moment.
+  @@unique([patientId, collectedDate, testCode])
+  @@index([patientId, testCode, collectedDate])
+  @@map("lab_results")
+}

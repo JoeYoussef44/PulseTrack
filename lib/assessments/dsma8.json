@@ -1,0 +1,35 @@
+{
+  "id": "dsma-8",
+  "version": "1.0",
+  "title": "Diabetes Self-Management Assessment (DSMA-8)",
+  "instructions": "Over the last 2 weeks, how often have the following applied to you? There are no right or wrong answers.",
+  "options": [
+    { "value": 0, "label": "Never" },
+    { "value": 1, "label": "A few days" },
+    { "value": 2, "label": "More than half the days" },
+    { "value": 3, "label": "Nearly every day" }
+  ],
+  "items": [
+    { "id": "q1", "text": "I missed or skipped a dose of my diabetes medication." },
+    { "id": "q2", "text": "I did not check my blood glucose when I was supposed to." },
+    { "id": "q3", "text": "I ate meals or snacks that I know are bad for my glucose control." },
+    { "id": "q4", "text": "I felt unusually thirsty or needed to urinate more often than normal." },
+    { "id": "q5", "text": "I felt shaky, sweaty, or dizzy in a way that felt like low blood sugar." },
+    { "id": "q6", "text": "I went the whole day without any physical activity or walking." },
+    { "id": "q7", "text": "I did not check my feet for cuts, blisters, or sores." },
+    { "id": "q8", "text": "I felt too overwhelmed or discouraged to manage my diabetes." }
+  ],
+  "scoring": {
+    "method": "sum",
+    "min": 0,
+    "max": 24,
+    "allItemsRequired": true,
+    "bands": [
+      { "min": 0, "max": 6, "label": "Low risk", "color": "green", "guidance": "Routine follow-up." },
+      { "min": 7, "max": 12, "label": "Moderate risk", "color": "yellow", "guidance": "Review at next appointment." },
+      { "min": 13, "max": 18, "label": "High risk", "color": "orange", "guidance": "Clinician should contact the patient." },
+      { "min": 19, "max": 24, "label": "Very high risk", "color": "red", "guidance": "Prompt clinical review recommended." }
+    ]
+  },
+  "notes": "Fictional instrument created for this challenge."
+}
