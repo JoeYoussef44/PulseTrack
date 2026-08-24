@@ -8,11 +8,16 @@ reconstruct it from diffs.
 
 ---
 
-## Session 3 — 2026-08-24 (Mon) — README shipped, and the app finally looked at
+## Session 3 — 2026-08-24 (Mon) — README, browser QA, and three defects found by using it
 
-**Tier 1 is complete except the live deployment.** Two merged PRs (#12, #13).
+**Tier 1 is complete except the live deployment.** Six merged PRs (#12–#17).
 Definition of Done 26 → 27 of 28. The single outstanding item is the Vercel URL,
 which only Joe can unblock.
+
+The session had two halves. The first shipped the README and the first browser
+pass. The second began when Joe used the app and immediately found three things
+none of our checks had caught — including one the acceptance checklist had
+already marked as verified.
 
 ### Phase 10 — the README (PR #12)
 
@@ -105,7 +110,7 @@ quietly falsified all of them. The row was deleted and the state re-checked
 against the database: `patients=3 assessments=8 completed=7 expired=1 labs=10
 rate=88%`. Recorded as **D-QA-2** so the next session restores the database too.
 
-### What this session got wrong
+### What the first half got wrong
 
 One thing, and it is the same shape as session 2's four: **a plausible
 conclusion that nobody tested.** "Charts cannot be verified headlessly" was
@@ -118,13 +123,172 @@ something cannot be done — is the kind most worth re-checking, because unlike 
 positive claim it never fails loudly. It just quietly shrinks the work.
 `state.md` §6a now carries the correction and the working recipe.
 
+At this point Tier 1 looked finished apart from the deployment. Then Joe opened
+the app.
+
+---
+
+## Session 3, second half — what using the app turned up
+
+### The acceptance checklist (PR #15)
+
+Before starting Tier 2, Joe asked what Tier 1 is actually supposed to present
+and what still needed testing. That produced
+`.docs/03-tier1-acceptance-checklist.html` and a rendered PDF: **112 numbered
+checks**, each traced back to the brief, the official attachments or the
+Definition of Done, so the band boundaries are the real 0–6/7–12/13–18/19–24
+rather than a remembered approximation.
+
+Writing it out was worth more than the document. Two things fell out of it:
+
+- **The states the brief explicitly grades are the least-tested part of the
+  app.** Empty-database, loading and error states had never been exercised, and
+  *"a dashboard with no data should look intentional, not broken"* is a direct
+  quote from the brief.
+- **The first-draft summary tiles were wrong** — 41/33/18 by estimate against
+  29/52/24 when counted from the document itself. Small, but the whole point of
+  a status column is that it is not a guess.
+
+### Three defects Joe found by using the app
+
+All three had passed everything we had. Worth recording individually, because
+each failed in a different way.
+
+**1. A duplicate MRN crashed the page (PR #16).**
+
+Creating a patient with an existing MRN rendered the Next.js error overlay with
+a raw `PrismaClientKnownRequestError`. In production that is a 500 — the site
+appearing to fall over on an ordinary data-entry mistake.
+
+**The checklist had this marked VERIFIED, and it was not.** Session 1 verified
+that the *database constraint* rejects duplicates and that was written down as
+though the *user-facing behaviour* had also been checked. They are two different
+checks. "The constraint holds" and "the user sees something sensible" have to be
+tested separately, and conflating them is how a crash survives into a document
+that claims coverage.
+
+The handler existed and looked correct. The cause was that **Prisma 7 with a
+driver adapter does not populate `meta.target`** — the field list moves to
+`meta.driverAdapterError.cause.constraint.fields`. `instanceof` and `error.code`
+were both still right, which is exactly why the code read as working. Probing the
+live database showed the real payload and settled it in one run.
+
+**2. A rejected submission cleared all six fields.** Found while verifying the
+first fix. React resets an uncontrolled form once its action resolves, and the
+reset lands on `defaultValue`, so a clinician retyped everything to correct one
+field. Failure states now echo the submission back. The `<select>` needed a key
+as well — React applies `defaultValue` to a select only on mount, so Sex alone
+still reset after the five text inputs were fixed.
+
+**3. There were no error boundaries at all.** No `error.tsx`, `global-error.tsx`,
+`not-found.tsx` or `loading.tsx` anywhere in the app. That is the real reason a
+single failure read as "the website goes down". Four were added, deliberately
+layered rather than global: the dashboard boundary sits *inside* the layout so a
+failure keeps the nav, and the public one is worded for a patient, who cannot
+debug and must not be told their answers were saved when they may not have been.
+The 404 says nothing about *why* a record is missing, so it cannot be used to
+enumerate ids.
+
+Next.js 16 names the recovery prop `retry`, not `reset` — checked against the
+bundled docs rather than assumed, exactly as `CLAUDE.md` instructs.
+
+### My own probes lied twice before the app did
+
+Both worth remembering, because both produced confident, wrong conclusions:
+
+- `page.click('button[type="submit"]')` matched the **header's Sign out button**,
+  which comes first in the DOM. The test logged itself out and reported that
+  submitting the form redirected to `/login`.
+- `page.type` into an `<input type="date">` follows the browser's **locale mask**,
+  so `"1990-01-01"` became an invalid date and Zod rejected it before Prisma was
+  ever reached — the duplicate path never ran at all.
+
+A green-looking probe that never reaches the code under test proves nothing. Both
+recipes are now in `state.md` §6a.
+
+### An hour lost to a stale server, and the email that was never broken
+
+Joe configured Resend and reported the app still saying "No email provider is
+configured". The configuration was correct the whole time.
+
+A background `npm start` left over from verification held port 3000. It had
+booted **twelve minutes before `.env` was saved**, so the browser was talking to
+a process with the old environment. Next then put Joe's own `npm run dev` on
+**3001**. Two servers, two environments, and the one being viewed was the stale
+one.
+
+The diagnosis took one command — comparing the process start time against the
+file mtime. The lesson is procedural rather than technical: **check the port and
+the process start time before debugging anything else**, and do not leave
+background servers running at the end of a task. That was my mistake and it cost
+Joe real time. `state.md` §6b records the symptoms that should trigger the
+suspicion immediately, including 500s on `/_next/static/chunks/*.js`, which mean
+a server is serving a chunk manifest a rebuild has already replaced.
+
+Once restarted, Resend worked and told us its own constraint: it delivers only to
+the account owner's address until a domain is verified. Fabricated recipients like
+`jane.doe@example.test` can never receive mail regardless, so **every evaluator
+will land on the copy-link path**. That is by design, and the brief allows it.
+
+### The database failure that was not a database failure (PR #17)
+
+Joe's log then showed `Can't reach database server` on login. The database was
+healthy — a direct connection seconds later succeeded, and its timing was the
+whole diagnosis:
+
+```
+CONNECTED in 3118 ms
+```
+
+**Neon's free tier scales compute to zero after a few minutes idle.** The next
+connection cold-starts it. `PrismaPg` was being constructed with only a
+connection string and no pool options, so the first request after idle failed
+with `P1001` and the retry succeeded — which makes it look intermittent rather
+than like a cold start.
+
+This one matters well beyond a local annoyance, and it is the reason it was worth
+fixing immediately rather than noting: it is precisely what an evaluator meets.
+They open the link days after we send it, and **the very first request they ever
+make** lands on a suspended compute. A login that errors on first attempt reads
+as a broken deployment, and they have no reason to guess they should retry.
+`connectionTimeoutMillis` is now 15s against a measured ~3s wake, and `max` is
+capped at 5 — which also closes risk R5, previously mitigated only by using the
+pooled URL.
+
+Stated honestly: the timeout is now longer than the measured wake. A cold start
+has **not** been observed to succeed end to end, because that needs the compute
+to actually idle down first. Re-check it on Vercel.
+
+### What the second half got wrong
+
+The same shape as everything else in this project: **a check that was recorded as
+done without being done.** Session 1 verified a database constraint; the
+checklist reported it as a verified user-facing behaviour; the behaviour was a
+crash. Nothing lied — a true fact was written down at the wrong altitude.
+
+The generalisation worth keeping: **a guarantee and its presentation are two
+separate checks.** The constraint holding, the API returning the right status,
+and the user seeing something sensible are three claims, and verifying the first
+says nothing about the third.
+
 ### Left undone
 
-**B2 (Vercel) is the only incomplete Tier 1 item**, and only Joe can clear it.
+**B2 (Vercel) is still the only incomplete Tier 1 item**, and only Joe can clear
+it. Two new items need a decision before submitting, both recorded in `state.md`
+§3 and §4:
 
-Tier 2 is untouched and is not blocked — `feat/fhir-push` can start immediately.
-Note that Tier 2's own Definition of Done also requires the import to complete
-from the deployed URL, so it cannot be fully closed while B2 is open either.
+- **The Resend API key was pasted into a chat transcript** and should be rotated.
+  It never reached git history or the client bundle — verified — but treat it as
+  exposed.
+- **The demo database has drifted** to 4 patients and 13 assessments (69%),
+  against the 3/8/88% quoted in the README and several PR bodies. One patient row
+  currently carries a **real personal email address**, added so Resend would
+  deliver. Either restore the documented state or re-document it, but they must
+  not disagree.
+
+22 of the checklist's 112 checks remain untested. The two that matter most are
+cloning into a clean directory and following the README literally, and building
+the one deliberately ugly CSV the brief promises to test with.
 
 ---
 
