@@ -8,10 +8,11 @@ import {
   RiskDistribution,
   StatTile,
 } from "@/components/dashboard/figures";
+import { RecentUploads } from "@/components/dashboard/recent-uploads";
 import { Button, Card, CardHeader, EmptyState, Skeleton } from "@/components/ui";
 import { requireClinician } from "@/lib/auth/session";
 import { clinicMetrics } from "@/lib/dashboard/service";
-import { formatRate } from "@/lib/dashboard/metrics";
+import { formatRate, parseUploadWindow } from "@/lib/dashboard/metrics";
 
 export const metadata: Metadata = { title: "Clinic" };
 
@@ -131,8 +132,17 @@ function OverviewSkeleton() {
   );
 }
 
-export default async function ClinicDashboardPage() {
+export default async function ClinicDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ uploads?: string }>;
+}) {
   await requireClinician();
+
+  const { uploads } = await searchParams;
+  // Total: an absent, unknown or hand-edited value falls back to the default
+  // rather than throwing or querying on an invalid date.
+  const window = parseUploadWindow(uploads);
 
   return (
     <div className="flex flex-col gap-6">
@@ -147,6 +157,20 @@ export default async function ClinicDashboardPage() {
 
       <Suspense fallback={<OverviewSkeleton />}>
         <Overview />
+      </Suspense>
+
+      <Suspense
+        key={window.key}
+        fallback={
+          <Card>
+            <div className="flex flex-col gap-2 px-5 py-6">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          </Card>
+        }
+      >
+        <RecentUploads window={window} />
       </Suspense>
     </div>
   );

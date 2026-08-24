@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { DSMA8 } from "@/lib/assessments/definition";
 import {
+  DEFAULT_UPLOAD_WINDOW,
   NO_ASSESSMENT,
+  UPLOAD_WINDOWS,
   completionRate,
   formatRate,
+  parseUploadWindow,
   riskDistribution,
 } from "@/lib/dashboard/metrics";
 import {
@@ -330,5 +333,43 @@ describe("timeDomain", () => {
 
   it("survives an empty series without producing NaN", () => {
     expect(timeDomain([])).toEqual([0, 0]);
+  });
+});
+
+/* ================================================== upload window ======== */
+
+describe("parseUploadWindow", () => {
+  const NOW = new Date("2026-08-24T12:00:00.000Z");
+
+  it("resolves a known window to its cutoff", () => {
+    const w = parseUploadWindow("7", NOW);
+
+    expect(w.days).toBe(7);
+    expect(w.since?.toISOString()).toBe("2026-08-17T12:00:00.000Z");
+  });
+
+  it("treats 'all' as no cutoff at all", () => {
+    const w = parseUploadWindow("all", NOW);
+
+    expect(w.days).toBeNull();
+    expect(w.since).toBeNull();
+  });
+
+  it("falls back to the default when the parameter is absent", () => {
+    expect(parseUploadWindow(undefined, NOW).key).toBe(DEFAULT_UPLOAD_WINDOW);
+  });
+
+  it("falls back rather than throwing on a hand-edited URL", () => {
+    // The value arrives straight from a query string, so it can be anything.
+    // Querying on a NaN date would fail at the database, not here.
+    for (const junk of ["", "0", "-5", "9999999999", "'; drop table", "NaN", "30 "]) {
+      const w = parseUploadWindow(junk, NOW);
+      expect(w.key, junk).toBe(DEFAULT_UPLOAD_WINDOW);
+      expect(w.since === null || !Number.isNaN(w.since.getTime())).toBe(true);
+    }
+  });
+
+  it("offers a default that is one of the options", () => {
+    expect(UPLOAD_WINDOWS.some((w) => w.key === DEFAULT_UPLOAD_WINDOW)).toBe(true);
   });
 });

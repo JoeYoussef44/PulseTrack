@@ -130,3 +130,54 @@ export function segmentTone(
       return "neutral";
   }
 }
+
+/* ------------------------------------------------------- upload window --- */
+
+/**
+ * The date-range filter on the clinic view's recent uploads.
+ *
+ * A closed set of windows rather than two free date inputs, deliberately: a
+ * clinician asking "what came in lately" wants one click, and two date pickers
+ * introduce a whole class of invalid states — end before start, a future start,
+ * a range spanning nothing — for a question nobody actually asks that precisely.
+ *
+ * Parsing lives here, and is total: an absent, unknown or hand-edited value
+ * resolves to the default rather than throwing or querying on NaN.
+ */
+export const UPLOAD_WINDOWS = [
+  { key: "7", days: 7, label: "7 days" },
+  { key: "30", days: 30, label: "30 days" },
+  { key: "90", days: 90, label: "90 days" },
+  { key: "all", days: null, label: "All time" },
+] as const;
+
+export type UploadWindowKey = (typeof UPLOAD_WINDOWS)[number]["key"];
+
+export interface UploadWindow {
+  key: UploadWindowKey;
+  days: number | null;
+  label: string;
+  /** The cutoff to query from, or null for all time. */
+  since: Date | null;
+}
+
+export const DEFAULT_UPLOAD_WINDOW: UploadWindowKey = "30";
+
+export function parseUploadWindow(
+  raw: string | undefined,
+  now: Date = new Date(),
+): UploadWindow {
+  const match =
+    UPLOAD_WINDOWS.find((w) => w.key === raw) ??
+    UPLOAD_WINDOWS.find((w) => w.key === DEFAULT_UPLOAD_WINDOW)!;
+
+  return {
+    key: match.key,
+    days: match.days,
+    label: match.label,
+    since:
+      match.days === null
+        ? null
+        : new Date(now.getTime() - match.days * 86_400_000),
+  };
+}
