@@ -208,9 +208,15 @@ export async function importLabCsv({
   };
 }
 
-/** Recent imports, for the upload page and the clinic dashboard. */
-export async function recentUploads(limit = 10) {
+/**
+ * Recent imports, for the upload page and the clinic dashboard.
+ *
+ * `since` is the clinic view's date-range filter. Absent means all time, which
+ * is what the lab import page wants.
+ */
+export async function recentUploads(limit = 10, since: Date | null = null) {
   return prisma.labUpload.findMany({
+    where: since ? { uploadedAt: { gte: since } } : undefined,
     orderBy: { uploadedAt: "desc" },
     take: limit,
     select: {
