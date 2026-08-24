@@ -1,0 +1,11 @@
+mrn,collected_date,test_code,test_name,value,unit,ref_low,ref_high
+MRN-1001,2026-05-02,GLU-F,Fasting Glucose,112,mg/dL,70,99
+MRN-1001,2026-05-02,HBA1C,Hemoglobin A1c,7.1,%,4.0,5.6
+MRN-1001,2026-06-02,GLU-F,Fasting Glucose,104,mg/dL,70,99
+MRN-1001,2026-06-02,HBA1C,Hemoglobin A1c,6.9,%,4.0,5.6
+MRN-1002,2026-05-15,GLU-F,Fasting Glucose,89,mg/dL,70,99
+MRN-1002,2026-05-15,HBA1C,Hemoglobin A1c,5.4,%,4.0,5.6
+MRN-1002,2026-05-15,SBP,Systolic Blood Pressure,128,mmHg,90,120
+MRN-1003,2026-06-20,GLU-F,Fasting Glucose,142,mg/dL,70,99
+MRN-1003,2026-06-20,HBA1C,Hemoglobin A1c,8.2,%,4.0,5.6
+MRN-1003,2026-06-20,SBP,Systolic Blood Pressure,141,mmHg,90,120
