@@ -1,28 +1,30 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-24**, session 2 (phases 4 and 5).
+> Last updated: **2026-08-24**, session 3 (README, browser QA).
 
 ---
 
 ## 1. Where we are
 
-**Phase 5 of 12 complete.** Tier 1 is feature-complete; only the README and
-the live deployment remain.
+**Tier 1 is complete except the live deployment**, which is blocked on the
+Vercel account and on nothing else. Phase 10 (README) shipped, and the two
+graded items that had never been looked at by eye have now been verified in a
+real browser.
 
 | Phase | Status |
 |---|---|
 | 0 · Repo, gitignore, FHIR recon | ✅ Complete |
-| 1 · Schema, migration, seed, auth | ✅ Complete locally (live deploy outstanding) |
+| 1 · Schema, migration, seed, auth | ✅ Complete locally |
 | 2 · Patient CRUD | ✅ Complete |
 | 3 · Assessment flow | ✅ Complete |
 | 4 · CSV importer | ✅ Complete |
 | 5 · Dashboards + charts | ✅ Complete |
-| **6 · Tier 1 gate** — deploy + QA | ⬜ **NEXT** — blocked on Vercel (B2) |
-| 7 · FHIR client + push | ⬜ Not started |
+| **10 · README + diagrams** | ✅ **Complete** (PR #12) |
+| **6 · Tier 1 gate** — deploy + QA | 🟡 **QA done** (PR #13). Deploy blocked on B2 |
+| 7 · FHIR client + push | ⬜ **NEXT** — not blocked |
 | 8 · FHIR pull + pagination | ⬜ Not started |
-| 9 · **Tier 2 gate** | ⬜ |
-| **10 · README + diagrams** | ⬜ **Do this even if B2 stays blocked** |
+| 9 · Tier 2 gate | ⬜ |
 | 11 · Submit | ⬜ Due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
@@ -35,26 +37,24 @@ the live deployment remain.
 | Email questionnaire flow | 100% |
 | CSV lab upload | 100% |
 | Dashboards | 100% |
-| Documentation (README) | 0% — still the create-next-app default |
-| Live Vercel URL | 0% |
+| Documentation (README) | **100%** |
+| Live Vercel URL | 0% — **B2, the only thing outstanding** |
 
-Definition of Done (`.docs/01-challenge-analysis.md` §19): **26 of 28 met**, 1 partial, 1 outstanding — see §1a.
+Definition of Done (`.docs/01-challenge-analysis.md` §19): **27 of 28 met.**
 
 ---
 
 ### 1a. What is actually left, item by item
 
-Checked against `.docs/01-challenge-analysis.md` §19, not assumed.
-
 | # | Item | State |
 |---|---|---|
-| 26 | README: setup <10 min, architecture diagram, ERD, Decisions & tradeoffs | ❌ **Not started** — still the create-next-app default |
-| 1 | Login works locally **and on the live Vercel URL** | ⚠️ Local ✅, live ❌ (B2) |
-| 24 | Usable at 375px | ⚠️ **Unverified.** Responsive classes are in place but nobody has looked at a narrow viewport |
-| 20 | Patient time series | ✅ built — but the **plotted charts were never seen** (see §6) |
+| 1 | Login works locally **and on the live Vercel URL** | ⚠️ Local ✅, live ❌ — **B2, and only Joe can clear it** |
+| 26 | README: setup <10 min, architecture diagram, ERD, Decisions & tradeoffs | ✅ **Done** — PR #12 |
+| 24 | Usable at 375px | ✅ **Verified in Chrome.** Three defects found and fixed (PR #13) |
+| 20 | Patient time series | ✅ **Seen.** Charts render with correctly plotted, chronologically ordered points |
 
-Everything else on the list is met and was verified against the live database
-rather than inferred.
+**Item 1 is the entire remaining Tier 1 scope.** Everything else is met and was
+verified against the live database or a real browser, not inferred.
 
 ---
 
@@ -70,9 +70,9 @@ rather than inferred.
 
 | # | Blocker | Needs | Impact |
 |---|---|---|---|
-| ~~B1~~ | ~~**`git push` rejected**~~ **CLEARED 2026-08-24** | Root cause was *not* a missing login: `JoeYoussef44` was already in the keyring but was not the **active** account. `gh auth switch --user JoeYoussef44` fixed it. That account has admin/push. | Resolved. Repo is published; 10 merged PRs. |
-| B2 | **Vercel account recovery** | Joe to finish account setup | A live URL is **required, not optional** per the brief. Also delays discovering production-only failures: serverless function timeout on the FHIR import, and Postgres connection exhaustion. |
-| B3 | **No Resend key** | Optional | Email falls back to a console adapter. The flow still demos: the clinician gets a copy-link after sending. Resend's free tier only delivers to the account owner's own address anyway. |
+| ~~B1~~ | ~~`git push` rejected~~ **CLEARED 2026-08-24** | `gh auth switch --user JoeYoussef44`. The account was in the keyring but not *active*. | Resolved. 13 merged PRs. |
+| **B2** | **Vercel account recovery** | **Joe to finish account setup. Nobody else can do this.** | A live URL is **required, not optional** per the brief, and is now the *only* incomplete Tier 1 item. Also delays discovering production-only failures: serverless function timeout on the FHIR import, and Postgres connection exhaustion. |
+| B3 | No Resend key | Optional | Email falls back to a console adapter. The flow still demos: the clinician gets a copy-link after sending. Resend's free tier only delivers to the account owner's own address anyway, so the console adapter is arguably the better demo. |
 
 ---
 
@@ -96,7 +96,12 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 **Database:** Neon, Postgres 17.11, region AWS us-east-1 (matches Vercel's default `iad1`).
 
 **What the demo database currently holds** — all fabricated, and all
-reproducible from `npm run db:seed` plus one upload of the supplied sample CSV:
+reproducible from `npm run db:seed` plus one upload of the supplied sample CSV.
+**Re-verified at the end of session 3:**
+
+```
+patients=3  assessments=8  completed=7  expired=1  labs=10  rate=88%
+```
 
 | | |
 |---|---|
@@ -109,6 +114,10 @@ reproducible from `npm run db:seed` plus one upload of the supplied sample CSV:
 Leave the lab results in place: they are what gives the charts something to
 draw on first run. If they are ever cleared, re-import
 `.docs/lab-results-sample-clean.csv` through `/labs/upload`.
+
+**If you send an assessment while testing, delete the row afterwards.** It adds a
+9th assessment and moves the headline completion rate from 88% to 78%, which no
+longer matches what this document and the PR bodies claim.
 
 ---
 
@@ -136,7 +145,9 @@ Without that flag, `server-only` throws — which is the guard working correctly
 not a bug. Two more traps in the same five minutes: the script needs
 `import "dotenv/config"` as its first line (tsx does not load `.env` for you),
 and it must wrap its body in `async function main()` — tsx compiles to CJS, so
-a top-level `await` is a syntax error.
+a top-level `await` is a syntax error. The script must also live **inside the
+project** for the `@/` path alias to resolve; a scratch copy outside it will not
+import `@/lib/db`.
 
 **Killing a stuck dev server** (Windows; `taskkill` flags get mangled through git-bash):
 
@@ -145,6 +156,9 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen |
   Select-Object -ExpandProperty OwningProcess -Unique |
   ForEach-Object { Stop-Process -Id $_ -Force }
 ```
+
+**Driving the app in a real browser — see §6a. This works, and it is how the
+last two graded Tier 1 items were closed.**
 
 ---
 
@@ -168,12 +182,49 @@ Get-NetTCPConnection -LocalPort 3000 -State Listen |
 | **csv-parse ragged rows** | With `relax_column_count`, a short row yields a record **missing those keys entirely**. Inferring the file's columns from row one therefore rejects the whole file whenever the first data row is short. Capture the header from the `columns` callback instead. |
 | **csv-parse `info.lines`** | Is the real file line number (header = 1), already correct across blank lines — so it is the number to show a clinician fixing the file in Excel. |
 | **`next dev` edits CLAUDE.md** | It appends an agent-rules block and re-adds it whenever removed. Committed deliberately, so the tree stays clean. |
-| **tsx scripts** | No top-level `await` (cjs output) and no automatic `.env` — wrap in `async function main()` and `import "dotenv/config"` first. |
+| **tsx scripts** | No top-level `await` (cjs output), no automatic `.env`, and must sit inside the project for `@/` to resolve. |
 | **Recharts x-axis** | A string x-axis is **categorical**: points plot in array order at even spacing whatever the labels say. A back-dated result draws a line that doubles back, and a year's gap looks like a day's. Use `type="number"` + `scale="time"` with millisecond timestamps, and sort in `lib/labs/series.ts`. |
 | **Recharts single point** | One reading makes `dataMin === dataMax`, a zero-width domain where the marker vanishes or lands on the axis. `timeDomain()` pads a week either side. Every new patient hits this. |
-| **Recharts + SSR** | Renders only a wrapper `<div>` on the server; the SVG needs client-side layout. So **charts cannot be verified headlessly** — `renderToStaticMarkup` returns 127 bytes and no `<svg>`. jsdom would not help either (no layout). Verify chart *data* through the `role="img"` aria-labels, which carry the real values; verify *appearance* in a browser. |
+| **Recharts + SSR** | Renders only a wrapper `<div>` on the server; `renderToStaticMarkup` returns 127 bytes and no `<svg>`, and jsdom has no layout either. **This is a limit of SSR and jsdom, not of headless verification — see §6a.** |
+| **Tailwind `-mx-*` breakout** | The `-mx-5 overflow-x-auto sm:mx-0` edge-to-edge table pattern is only correct when the parent supplies matching padding. `Card` has **none** — it is `rounded-lg border bg-surface` — so a `-mx-5` inside a bare `Card` hangs the table 20px outside it, breaks the card border, and scrolls the whole page sideways. Correct inside a `px-5` wrapper (`upload-form.tsx`), wrong directly inside a `Card`. |
+| **`truncate` in a fixed grid column** | Silently hides text at *every* width, not just mobile. The risk-band label read `not survey…` at 1280px for two sessions before anyone looked. Prefer wrapping over truncation for anything carrying meaning. |
 | **Risk-band colours vs CVD** | The four band colours are a continuous green→yellow→orange→red ramp, so **any two neighbours are close**: moderate↔high measured ΔE 8.0 normal / **0.4 deuteran**. Never put them in touching segments (stacked bar, pie). Faceted rows with per-row labels are safe, and each band clears 3:1 on its own. |
 | **Dashboard filters** | Completion rate is all-time (D-DASH-2) and the risk distribution is a register snapshot, so a global date filter would falsify them. The date range scopes the uploads card only, by design. |
+
+---
+
+### 6a. Browser verification works — this was previously believed impossible
+
+Sessions 1 and 2 recorded that the charts "cannot be verified headlessly". **That
+conclusion was wrong.** It was true of `renderToStaticMarkup` and of jsdom, and
+was over-generalised to all headless verification. Headless **Chrome has real
+layout**, so it renders Recharts exactly as a user sees it.
+
+Chrome is installed at `C:/Program Files/Google/Chrome/Application/chrome.exe`.
+Drive it with `puppeteer-core`, **installed in the scratchpad, not the project**
+— it is a verification tool, not a dependency, and adding it to `package.json`
+would put a browser driver in a submission that does not need one.
+
+```bash
+cd <scratchpad> && npm init -y && npm install puppeteer-core
+node shoot.js     # launch: { executablePath: CHROME, headless: "new" }
+```
+
+What that pass is worth doing for, each of which found something:
+
+- **Measure `documentElement.scrollWidth - clientWidth` at 375px.** Anything
+  above 1 means the page scrolls sideways. This found the `-mx-5` defect.
+- **Walk every element's `getBoundingClientRect().right`** to name the culprit,
+  rather than guessing which element overflowed.
+- **Screenshot and actually look.** The truncated `not survey…` label passed the
+  overflow check — it was only visible in the image.
+- **Use `waitUntil: "domcontentloaded"`, not `networkidle0`.** `networkidle0`
+  times out against this app.
+- **Sleep ~1.2s after navigation before probing charts.** Recharts needs a
+  client-side layout pass before `svg.recharts-surface` exists.
+- **Open patient-facing pages in `browser.createBrowserContext()`** — a fresh
+  cookie-less context. That is both how a patient actually arrives and a check
+  that the page is authorised by its token alone.
 
 ---
 
@@ -198,44 +249,40 @@ lib/db.ts         Prisma singleton (server-only)
 **Authorization is three layers deep**, because any one can be misconfigured:
 `proxy.ts` (edge cookie check) → `auth()` in each page → `requireClinician()` in each mutation.
 
+**The README now documents all of this** with Mermaid diagrams, for the
+evaluator rather than for us.
+
 ---
 
 ## 8. Decisions already made
 
-Recorded in `.docs/01-challenge-analysis.md` §16 as `D-*` and §23. The ones that shape day-to-day work:
+Recorded in `.docs/01-challenge-analysis.md` §16 as `D-*` and §23, and now also
+in the **README's "Decisions and tradeoffs" section**, which is the version an
+evaluator reads. The ones that shape day-to-day work:
 
 - **D-CSV-1** Required CSV columns are `mrn`, `collected_date`, `test_code`, `value`. `test_name`, `unit`, `ref_low`, `ref_high` are optional — warn, don't reject.
 - **D-CSV-2** A re-uploaded row with a changed value is **skipped and reported**, never silently overwritten.
-- **D-CSV-3** Seed `MRN-1001/1002/1003` so the supplied sample CSV imports 10/10 on a fresh database. Already done.
+- **D-CSV-3** Seed `MRN-1001/1002/1003` so the supplied sample CSV imports 10/10 on a fresh database.
 - **D-CSV row outcomes** Three states, not two: Accepted / Rejected / **Already imported**.
 - **D-DASH-2** Completion rate = completed ÷ all sent, all time. `—` when the denominator is zero.
 - **D-DASH-3** Risk distribution counts each patient once, by their latest *completed* assessment.
 - **D-FHIR-2** Never push back data we pulled.
 - **D-FHIR-5** Rebase `next` links (see §6).
-
-Decided during implementation in session 2, and **not yet folded back into the
-analysis document** — this list is the authority on them for now:
-
-- **D-CSV-5** A mismatched `unit` is stored **exactly as reported** and flagged,
-  never relabelled to the canonical unit. Rewriting `5.8 mmol/L` as `5.8 mg/dL`
-  would turn a normal glucose into a fatal-looking one while appearing to be a
-  tidy-up. A pure case/spacing difference (`MG/DL`) normalises silently.
-- **D-CSV-6** A malformed or inverted `ref_low`/`ref_high` **warns and falls back
-  to the catalog range**; it never rejects the row. A reference range is chart
-  furniture, not a measurement.
-- **D-API-1** API routes are exempt from the edge redirect and authorise
-  themselves with `requireClinicianApi()`. A `fetch` that meets a 307 follows it
-  and parses login HTML as JSON. **Any new route handler must call it** — the
-  edge no longer covers `/api/*`.
-- **D-DASH-4** Risk bands render as **one labelled bar per band, never a stacked
-  bar or pie**. The four band colours are a continuous hue ramp, so neighbours
-  are inherently close (moderate↔high measured ΔE 8.0 normal / 0.4 deuteran).
-  Nothing may put them in touching segments. See §6.
+- **D-CSV-5** A mismatched `unit` is stored **exactly as reported** and flagged, never relabelled to the canonical unit. A pure case/spacing difference (`MG/DL`) normalises silently.
+- **D-CSV-6** A malformed or inverted `ref_low`/`ref_high` **warns and falls back to the catalog range**; it never rejects the row.
+- **D-API-1** API routes are exempt from the edge redirect and authorise themselves with `requireClinicianApi()`. **Any new route handler must call it.**
+- **D-DASH-4** Risk bands render as **one labelled bar per band, never a stacked bar or pie**.
 - **D-DASH-5** The dashboard's date filter scopes the **uploads card only**.
-  Completion rate is all-time (D-DASH-2) and the risk distribution is a register
-  snapshot, so a global date filter would falsify both rather than narrow them.
-- **D-CHART-1** One measure per chart, **never a dual axis**. Two y-scales align
-  arbitrarily, so a shared plot asserts a correlation the data does not contain.
+- **D-CHART-1** One measure per chart, **never a dual axis**.
+
+New in session 3:
+
+- **D-QA-1** Browser verification tooling (`puppeteer-core`) lives in the
+  scratchpad, **never in `package.json`**. It is how we check the work, not part
+  of the product, and a submission should not ship a browser driver.
+- **D-QA-2** After any test that mutates the demo database, restore it. The
+  documented figures (88% completion, 3/8/10) appear in `state.md`, the README
+  and several PR bodies; a stray test row silently falsifies all of them.
 
 ---
 
@@ -243,8 +290,7 @@ analysis document** — this list is the authority on them for now:
 
 The repo is published at **https://github.com/JoeYoussef44/PulseTrack** with a
 merge-based topology. History was restructured **before the first push**, so no
-public commit was ever rewritten and no SHA changed — each feature branch was
-pointed at the commit that already existed.
+public commit was ever rewritten and no SHA changed.
 
 | PR | Branch | Contents |
 |---|---|---|
@@ -255,13 +301,14 @@ pointed at the commit that already existed.
 | #6 | `feat/csv-lab-import` | parser, classifier, service, endpoint, report UI |
 | #8 | `feat/dashboards-charts` | trend charts, clinic metrics, risk bands, seed history |
 | #9 | `feat/dashboard-upload-filter` | recent imports + date-range filter |
+| **#12** | `docs/readme-and-diagrams` | **README: setup, architecture, ERD, 15 decisions** |
+| **#13** | `fix/mobile-layout-375` | **three layout defects found in a real browser** |
 
 **Every remaining phase ships the same way** — branch, incremental commits,
 tests green, PR with real test output in the body, `--merge` (never squash),
 branch kept after merge. The procedure is in `CLAUDE.md` under *Git workflow*.
 
-Remaining branches: `docs/readme-and-diagrams`, `feat/fhir-push`,
-`feat/fhir-pull-pagination`.
+Remaining branches: `feat/fhir-push`, `feat/fhir-pull-pagination`.
 
 `backup/pre-restructure` is a **local-only** safety ref at the original
 pre-restructure tip. `git diff backup/pre-restructure main` was verified empty.
@@ -271,31 +318,33 @@ Safe to delete once you are happy.
 
 ## 9. Next session — start here
 
-**Tier 1 is feature-complete.** Two things stand between this and a valid
-submission, and one of them does not depend on Vercel.
+**Tier 1 is done apart from the deployment.** The critical path now forks:
 
-1. **Write the README (Phase 10), on `docs/readme-and-diagrams`.** It is one of
-   the brief's six graded areas and is still the create-next-app default. It
-   needs: setup a stranger can follow in under 10 minutes, an **architecture
-   diagram**, an **ERD**, and a **"Decisions & tradeoffs"** section — the brief
-   says outright *"We read this carefully."*
+1. **B2 is Joe's, and it is the only incomplete Tier 1 item.** A live URL is
+   required, not optional. Once the account is available:
+   `vercel link`, set every `.env` value as a project env var, build command
+   `prisma migrate deploy && next build`, then re-run the QA pass against the
+   deployed origin. Deploying also flushes out the production-only failures
+   nobody has seen: serverless function timeouts and Postgres connection
+   exhaustion through the pooled URL.
 
-   Most of the raw material already exists: the `D-*` decisions in
-   `.docs/01-challenge-analysis.md` §16, the schema reasoning in §10, and the
-   defect write-ups in `CHANGELOG.md`. Mermaid renders on GitHub.
+2. **Tier 2 (Phase 7, `feat/fhir-push`) is not blocked and can start now.**
+   Push first — it is the smaller, self-contained half. The three
+   reconnaissance findings in §6 are the ones that will otherwise cost hours.
+   The open question is still whether HAPI accepts `_tag` inside
+   `If-None-Exist`; resolve it with a real write early, because **writes are
+   permanent — DELETE is disabled on that server.**
 
-2. **Deploy (Phase 6), the moment B2 clears.** A live URL is required, not
-   optional. Deploying also flushes out the production-only failures nobody has
-   seen yet: serverless function timeouts, and Postgres connection exhaustion
-   through the pooled URL.
+   Note that Tier 2's own Definition of Done (§20) also requires the import to
+   run to completion **from the deployed URL** without a function timeout, so
+   Tier 2 cannot be fully closed while B2 is open either.
 
-3. **Look at the app in a browser at 375px.** Two graded items rest on this and
-   neither has been checked by eye — the charts (Recharts draws client-side, so
-   no headless check is possible) and mobile usability.
+3. **Tier 2 adds to the README** — requirement 4 is an integration diagram, and
+   §20 wants the idempotency design explained there. The README is structured to
+   take that as a new section rather than a rewrite.
 
-Only then Tier 2 (`feat/fhir-push`, `feat/fhir-pull-pagination`). Tier 2 is
-"strongly recommended", but a polished Tier 1 is explicitly a complete
-submission, and an undocumented Tier 2 scores worse than a documented Tier 1.
+Tier 3 stays out of scope: its Definition of Done (§21) opens with "Tier 1 and
+Tier 2 are complete, deployed and QA'd first."
 
 Deeper context, if needed: `.docs/01-challenge-analysis.md` (requirements
 matrix, security analysis, evaluator edge cases) and `.docs/candidate-brief.md`
