@@ -53,7 +53,7 @@ Definition of Done (`.docs/01-challenge-analysis.md` §19): **15 of 28 met**, 4 
 
 | # | Blocker | Needs | Impact |
 |---|---|---|---|
-| B1 | **`git push` rejected** | Joe to run `gh auth login --web` and pick `JoeYoussef44`. Machine credentials currently authenticate as `CoperonDev` (read-only on the repo); `JoeYoussef44C` is a *different* account and also cannot push. | Nothing is on GitHub yet. 8 commits sit local-only. |
+| ~~B1~~ | ~~**`git push` rejected**~~ **CLEARED 2026-08-24** | Root cause was *not* a missing login: `JoeYoussef44` was already in the keyring but was not the **active** account. `gh auth switch --user JoeYoussef44` fixed it. That account has admin/push. | Resolved. Repo is published with 4 merged PRs. |
 | B2 | **Vercel account recovery** | Joe to finish account setup | A live URL is **required, not optional** per the brief. Also delays discovering production-only failures: serverless function timeout on the FHIR import, and Postgres connection exhaustion. |
 | B3 | **No Resend key** | Optional | Email falls back to a console adapter. The flow still demos: the clinician gets a copy-link after sending. Resend's free tier only delivers to the account owner's own address anyway. |
 
@@ -165,6 +165,33 @@ Recorded in `.docs/01-challenge-analysis.md` §16 as `D-*` and §23. The ones th
 - **D-DASH-3** Risk distribution counts each patient once, by their latest *completed* assessment.
 - **D-FHIR-2** Never push back data we pulled.
 - **D-FHIR-5** Rebase `next` links (see §6).
+
+---
+
+## 8b. Git workflow — follow this for every remaining phase
+
+The repo is published at **https://github.com/JoeYoussef44/PulseTrack** with a
+merge-based topology. History was restructured **before the first push**, so no
+public commit was ever rewritten and no SHA changed — each feature branch was
+pointed at the commit that already existed.
+
+| PR | Branch | Contents |
+|---|---|---|
+| #1 | `feat/data-model-and-seed` | schema, scoring, test catalog, pagination helper, seed |
+| #2 | `feat/clinician-auth` | Auth.js v5, three-layer authorization |
+| #3 | `feat/patient-management` | CRUD, search, validation |
+| #4 | `feat/dsma8-assessments` | token → email → public form → scoring |
+
+**Every remaining phase ships the same way** — branch, incremental commits,
+tests green, PR with real test output in the body, `--merge` (never squash),
+branch kept after merge. The procedure is in `CLAUDE.md` under *Git workflow*.
+
+Planned branches: `feat/csv-lab-import`, `feat/dashboards-charts`,
+`feat/fhir-push`, `feat/fhir-pull-pagination`, `docs/readme-and-diagrams`.
+
+`backup/pre-restructure` is a **local-only** safety ref at the original
+pre-restructure tip. `git diff backup/pre-restructure main` was verified empty.
+Safe to delete once you are happy.
 
 ---
 

@@ -68,6 +68,26 @@ Vitest. Deployment target: Vercel.
 - Prefer a simple implementation that can be explained on a call over a clever
   one that cannot.
 
+## Git workflow
+
+Every phase ships as a **feature branch and a pull request**, never a direct
+commit to `main`. The incremental history is explicitly evaluated, and the PR
+list is the most legible evidence of it.
+
+1. `git checkout -b feat/<phase-name>` off current `main`.
+2. Commit incrementally as the work progresses. Do not squash.
+3. `npm test` and `npm run lint` must pass before the PR is opened.
+4. `gh pr create --base main` with a body that states **what** changed, **why**
+   the non-obvious decisions were made, and the **actual test output**.
+5. `gh pr merge <n> --merge` — a merge commit, so the branch topology survives.
+6. Merge as each phase completes; `main` must always be deployable.
+
+Branches are kept after merge, not deleted — they are part of the evidence.
+
+**Push as `JoeYoussef44`.** The machine has three GitHub accounts in the
+keyring; `CoperonDev` is read-only on this repo. If a push is rejected, run
+`gh auth switch --user JoeYoussef44` rather than re-authenticating.
+
 ## Verify, don't assume
 
 This project is judged on correctness under hostile input. Before reporting
