@@ -1,0 +1,11 @@
+# Normalise line endings in the repo; check out native on Windows.
+* text=auto
+
+# Keep the supplied challenge fixtures byte-identical (LF, no conversion).
+*.csv -text
+*.json text eol=lf
+
+# Binary
+*.pdf binary
+*.png binary
+*.ico binary
