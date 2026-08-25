@@ -988,6 +988,7 @@ npm run dev          # dev server
 npm run build        # production build
 npm start            # serve the build
 npm run lint         # eslint
+npm run typecheck    # next typegen && tsc --noEmit
 npm test             # vitest
 npm run db:migrate   # prisma migrate dev
 npm run db:deploy    # prisma migrate deploy (production)

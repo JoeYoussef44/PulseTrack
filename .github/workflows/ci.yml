@@ -46,8 +46,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # `next typegen` first, not tsc alone. Next generates the route and layout
+      # helper types (LayoutProps, PageProps) into .next/types during dev and
+      # build, so a developer who has run `next dev` typechecks clean while a
+      # fresh checkout does not. CI caught exactly that. `npm run typecheck`
+      # runs both, so local and CI cannot drift apart again.
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Tests
         run: npm test
