@@ -1,8 +1,8 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-25**, session 5 (deployed — CI/CD, the Tier 2
-> explainer, the ugly CSV, and the whole app verified against the live URL).
+> Last updated: **2026-08-25**, session 6 (the fabricated-identity fix, the
+> empty and loading states finally looked at, and the clinical UI layout).
 
 ---
 
@@ -11,10 +11,14 @@
 **Tier 1 and Tier 2 are complete and deployed.** B2 is cleared: the app is
 live at **https://pulse-track-joe.vercel.app**, building from git, and every
 Definition-of-Done item that needed a deployment has now been run against it.
-Session 5 merged PRs #21–#25.
+Session 5 merged PRs #21–#25; session 6 merged #26–#30.
 
-What remains before submitting is housekeeping and two graded QA items, all
-listed in §9. Nothing is blocked.
+**A2 is cleared** — no record carries a real identity any more (§4b) — the
+empty and loading states have now been *seen*, not merely counted (§1d), and
+the dashboard, register and patient page were rebuilt around a clinical frame
+(§1e) which is **live in production and verified there**.
+
+What remains before submitting is in §9. Nothing is blocked.
 
 | Phase | Status |
 |---|---|
@@ -30,6 +34,7 @@ listed in §9. Nothing is blocked.
 | 8 · FHIR pull + pagination | ✅ Complete (PR #20) |
 | 9 · Tier 2 gate | ✅ **Complete.** Import runs from the deployed URL — §1b |
 | 13 · Deploy + CI/CD | ✅ Complete (PRs #22–#24) |
+| 14 · Clinical UI layout | ✅ Complete and live (PRs #29, #30) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
@@ -98,22 +103,25 @@ Measured against the live URL on 2026-08-25, not inferred:
 pre-submission test plan: **112 numbered checks** derived from the brief, the
 official attachments and the Definition of Done, each with how to test it.
 
-Standing at the end of session 5: the **6 deploy-blocked checks are unblocked
-and passing** (§1b), and **the ugly CSV is done** — `.docs/lab-results-ugly.csv`
+Standing at the end of session 6: the **6 deploy-blocked checks are unblocked
+and passing** (§1b), **the ugly CSV is done** — `.docs/lab-results-ugly.csv`
 with `.docs/05-ugly-csv-expected-outcomes.md`, imported through the live UI and
-matching its predicted 11/14/4.
+matching its predicted 11/14/4 — and **7.1–7.3 are done**: the empty and
+loading states have been rendered and looked at (§1d).
 
 Still to do before submitting:
 
 - **9.1 — clone into a clean directory and follow the README literally.** The
   first thing an evaluator does, on a machine that is not ours, and the one
   check this machine cannot honestly perform on itself.
-- **Look at the empty and loading states** (7.1–7.3). See the correction below.
+- **Re-run the layout checks that the UI rebuild touches** on the live URL as
+  part of the final pass. §1e records what has been measured there already.
 
-#### Correction: the empty and loading states exist
+#### How this section read for two sessions, and why
 
-Earlier revisions of this file said they had not been built. **That was wrong**
-and it was repeated for two sessions. They are implemented:
+Earlier revisions of this file said the empty and loading states had not been
+built. **That was wrong** and it was repeated for two sessions. They are
+implemented:
 
 - `EmptyState` is used in **seven** places — dashboard, patients list, patient
   detail, lab upload, the FHIR integration page, `patient-trends`, and
@@ -123,12 +131,77 @@ and it was repeated for two sessions. They are implemented:
   `/integrations/fhir`. The patients list keys its boundary on the query, so
   the skeleton reappears per search rather than showing stale rows.
 
-**The real gap is that none of them has ever been seen.** The database has
-always had data, so no empty state has rendered once, and the skeletons pass
-too fast to inspect. That is the project's recurring failure in its usual form:
-the code existing and its presentation being correct are two separate claims,
-and only the first was ever checked. Verify against a scratch empty database
-and with the network throttled.
+Session 5 then narrowed the gap to **none of them had ever been seen** — the
+database has always had data, so no empty state had rendered once, and the
+skeletons pass too fast to inspect. Session 6 closed it: §1d. The lesson is
+worth keeping in its general form, because it recurs here in new places every
+session — **the code existing and its presentation being correct are two
+separate claims, and only the first is ever cheap to check.**
+
+### 1d. The empty and loading states have now been seen
+
+Session 5 corrected the claim that they had not been built. Session 6 closed the
+narrower gap that correction left open: **they had never been looked at**,
+because the database has always had data.
+
+Method, repeatable: create a scratch Neon database (`CREATE DATABASE
+pulsetrack_empty` over `DIRECT_URL`), `prisma migrate deploy` into it, seed the
+clinician *only*, then serve a **production build** against it. Skeletons were
+held still with CDP throttling at 40 kbit/s and 400 ms latency.
+
+Result: **nine empty states, all of which read as intentional** — dashboard,
+patients list, no-match search, lab upload, FHIR page, and four on a
+freshly-created patient. Plus the state nobody had thought about, one patient
+with no activity: `1 · 0 assessed · 1 not yet`, completion `—`, all bands zero.
+Zero horizontal overflow at 375 and 1280; no stuck skeletons.
+
+Two defects came out of it, both fixed:
+
+- **`/integrations/fhir`'s `loading.tsx` had stopped matching its page** — four
+  figures in four columns against the page's six in three, so the grid reflowed
+  when content arrived, while the file's own comment claimed it would not. It
+  drifted when the pull side added two figures in PR #20. Fixed in **#27**; the
+  heading now lives in one file imported by both, because writing it out twice
+  is what let them diverge.
+- **The empty dashboard left a dead half-row** once the body became two columns
+  — fixed with an `auto-fit` grid (§1e).
+
+The scratch database was dropped afterwards. **Recreate it rather than trusting
+this note** if the empty states need re-checking.
+
+### 1e. The clinical UI layout (PRs #29 and #30, live)
+
+The shell was `max-w-6xl` centred, so it rendered **1104px of content on every
+monitor**: 86% of a 1280px screen, 77% of 1440, **57% of 1920 with 408px of dead
+margin each side**. The diagnosis was not "too narrow" but "one column" —
+widening alone would only have given the risk bars more empty track.
+
+| | Before | After |
+|---|---|---|
+| Content width at 1920 | 1104px (57%) | fluid to 1600px |
+| Patient page, 3 lab series | 1631px tall | **1366px**, four charts at once |
+| Horizontal overflow at 375px | 0 | **0**, all five pages |
+| Tests | 264 | **268** |
+
+What changed: navigation moved to a fixed 232px rail on a new `--color-deep`
+(the frame Epic, Athenahealth, Elation and Medplum share); a `PageHeader`
+primitive gives every page one title row with one action slot; the patient
+page's details card became a sticky identity banner with the four charts in one
+grid and the two record tables abreast; the dashboard leads with four equal
+tiles and puts the distribution beside the imports; the register gained **latest
+band** and **last result**.
+
+What deliberately did not change: **the palette**. It is derived from
+`questionnaire-dsma8.json` and documented in `globals.css`; four tokens were
+added, none replaced, and the risk ramp is byte-for-byte identical.
+
+**Verified on production**, not on a local build: all five pages at 1920 and
+375px, zero horizontal overflow, no console or network errors.
+
+The preview URL could not be checked from here — Vercel deployment protection
+puts previews behind an SSO login, so a preview answers `200` and then redirects
+to a Vercel sign-in. **Preview verification is a human step**; scripted checks
+have to run against a local production build or against production itself.
 
 ---
 
@@ -147,9 +220,10 @@ and with the network throttled.
 | ~~B1~~ | ~~`git push` rejected~~ | **CLEARED.** `gh auth switch --user JoeYoussef44`. 17 merged PRs. |
 | ~~B2~~ | ~~Vercel deployment~~ | **CLEARED, 2026-08-25.** Live at https://pulse-track-joe.vercel.app, deploying from git. Everything it blocked has been re-verified against it — §1b. |
 | ~~B3~~ | ~~No Resend key~~ | **CLEARED.** Resend is configured and sending — see §4a for the constraint that comes with it. |
-| **A1** | **Rotate the Resend API key** | The key was pasted into a chat transcript. Revoke and reissue at resend.com/api-keys. Verified it never reached git history or the client bundle, but treat it as exposed. |
-| **A2** | **Two patient records carry real personal inboxes** | See §4. `MRN-444` (outlook.com) and `MRN-3410` (gmail.com), both named "Joe Hassib Youssef". The brief says fabricated data only, and **an evaluator clicking Send assessment emails a real person**. Rename to `@example.test`, or delete `MRN-3410` and rename `MRN-444`. |
+| ~~A1~~ | ~~Rotate the Resend API key~~ | **CLOSED by Joe, session 6** — "not an issue any more". Recorded rather than silently dropped: the key was pasted into a chat transcript, and it was verified never to have reached git history or the client bundle. |
+| ~~A2~~ | ~~Two patient records carry real personal inboxes~~ | **CLEARED, session 6.** Both renamed to fabricated identities and re-pushed to the platform — §4b. |
 | **A3** | **Demo figures no longer match older PR bodies** | Now 10 patients / 16 assessments / 69% / 190 labs. Nothing in the README quotes the old numbers any more, so this is cosmetic — but the live site should look deliberate. |
+| ~~A4~~ | ~~PR #29 is on `dev`, not production~~ | **CLEARED, session 6.** Promoted in #30 and verified live — §1e. |
 
 ---
 
@@ -168,7 +242,7 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 | `FHIR_BASE_URL` / `FHIR_CANDIDATE_ID` | ✅ | `cand-joe-l` (not a secret) |
 | `FHIR_API_KEY` | ✅ | **Secret.** Never commit, never log, never `NEXT_PUBLIC_`. |
 | `EMAIL_PROVIDER` | ✅ | `resend` |
-| `EMAIL_API_KEY` | ✅ | **Secret, and due for rotation — see A1.** |
+| `EMAIL_API_KEY` | ✅ | **Secret.** Rotation was considered and closed by Joe — see A1 in §3. |
 | `EMAIL_FROM` | ✅ | `"PulseTrack <onboarding@resend.dev>"` — quotes and the `Name <addr>` form both parse correctly |
 | `AI_*` | ⬜ | Tier 3 only |
 
@@ -198,20 +272,15 @@ The documented state — quoted in the README, several PR bodies and earlier
 revisions of this file — is **3 patients, 8 assessments, 88%**. The drift came
 from manual testing plus verification runs that sent real assessments.
 
-Two things need a decision before submitting:
+One thing still needs a decision before submitting (A3):
 
-1. **Restore or re-document.** Either clean back to 3/8/10 and 88%, or update
-   every place that quotes those figures. Do not leave them disagreeing.
-2. **Two records carry real personal inboxes** — `MRN-444 Joe Hassib Youssef`
-   (outlook.com, 6 assessments) and `MRN-3410 Joe Hassib Youssef Test`
-   (gmail.com, 1 assessment). `MRN-444` was added so Resend would actually
-   deliver (§4a); `MRN-3410` is a test row from session 5. Three reasons to fix
-   before submitting, worst last: the brief asks for fabricated data only; a
-   record named "…Test" beside Jane Doe reads as leftover debugging; and
-   **anyone clicking Send assessment on either one emails a real person, with
-   no way of knowing.** Rename to `@example.test` and keep the assessment
-   history — it is useful demo data, and losing real delivery costs nothing
-   because every evaluator lands on the copy-link path anyway (§4a).
+**Restore or re-document.** Either clean back to 3/8/10 and 88%, or accept
+10/16/190 as the demo state. Nothing in the README quotes the old figures any
+more, so this is presentation, not correctness — but do not leave two numbers
+disagreeing anywhere an evaluator reads.
+
+*(The second item here, the two records carrying real personal inboxes, was
+fixed in session 6 — §4b.)*
 
 Everything is reproducible from `npm run db:seed`, one upload of
 `.docs/lab-results-sample-clean.csv` through `/labs/upload`, and one **Import**
@@ -236,6 +305,32 @@ will land on the copy-link path.** That is by design and the brief allows it:
 
 Keep `EMAIL_PROVIDER` unset in `.env.example`, so a fresh clone works with no
 key and falls back to the console adapter plus the in-app copy-link.
+
+### 4b. The two real identities are gone — what was done, and what could not be
+
+`MRN-444` and `MRN-3410` both carried Joe's real name, a real inbox, a real
+mobile number and a real date of birth. Session 6 replaced both with fabricated
+identities, keeping their assessment history:
+
+| MRN | Now | Kept |
+|---|---|---|
+| `MRN-444` | Nour Chalhoub · `nour.chalhoub@example.test` · +961 3 111 444 · 1971-08-19 | 6 assessments |
+| `MRN-3410` | Elias Mansour · `elias.mansour@example.test` · +961 3 111 410 · 1989-03-17 | 1 assessment |
+
+**Probed before changing anything.** Both were `OWNED`/`SYNCED` on the national
+platform (resources 819 and 830), so the real **name and date of birth were on a
+shared, publicly readable server**. D-FHIR-11 held — no `telecom` was ever
+pushed — so the email and phone never left this machine. Both resources were
+re-pushed through `pushPatient`'s PUT path and now read the fabricated names.
+
+**One thing that cannot be undone, and must not be claimed otherwise:**
+`GET /Patient/819/_history/1` still returns `200` with the original name. That
+server disables DELETE, so the superseded version stays in its history. The
+current version — what any read, search or import returns — is clean.
+
+Verified against **production**, not inferred: signed in to
+`/patients` on the live URL and grepped the rendered page for `Joe`, `Hassib`,
+`Youssef`, `Test`, `outlook`, `gmail`. All absent.
 
 ---
 
@@ -321,6 +416,10 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **`truncate` in a fixed grid column** | Hides text at **every** width, not just mobile. A risk-band label read `not survey…` at 1280px for two sessions. |
 | **Risk-band colours vs CVD** | A continuous green→yellow→orange→red ramp, so neighbours are always close: moderate↔high measured ΔE 8.0 normal / **0.4 deuteran**. Never put them in touching segments. |
 | **Dashboard filters** | Completion rate is all-time and the risk distribution is a register snapshot, so a global date filter would falsify them. The date range scopes the uploads card only, by design. |
+| **Tailwind utility conflicts** | Two utilities for the same property are resolved by **their order in the generated stylesheet**, not the order they appear in `class`. Passing `text-deep-ink` alongside a variant's `text-ink-2` is a coin toss — and it lost, rendering the rail's Sign out near-invisible. Add a variant instead; a variant cannot conflict with itself. |
+| **Grid tracks blow out at 375px** | A CSS grid track sized `auto` takes its minimum from the item's **min-content**, so a card holding a `min-w-[520px]` table drags the whole column past the viewport — 283px of it. A column flexbox does not do this, which is why wrapping cards in a grid regressed a layout that had been clean. Tailwind's numbered `grid-cols-*` are `minmax(0, 1fr)` and cannot: **always name the single-column case**, `grid-cols-1`, not bare `grid`. |
+| **A grid with one child** | `xl:grid-cols-2` leaves a dead half-row when one child renders `null` — which the dashboard does when there are no patients. `repeat(auto-fit, minmax(min(30rem, 100%), 1fr))` collapses the empty track, and the `min()` is what keeps the track from being wider than a phone. |
+| **The Next dev overlay hides the bottom-left corner** | The dev-tools badge sits exactly where the rail's Sign out button is, so every development screenshot showed it covered rather than broken. **Any UI claim about that corner has to come from a production build.** |
 
 ---
 
@@ -409,6 +508,20 @@ Symptoms that should trigger this suspicion immediately:
 **Check the port and the process start time before debugging anything else**
 (§5). Do not leave background servers running at the end of a task.
 
+**It recurred in session 6, in a worse form.** A verification run against a
+deliberately *empty* database reported clean, intentional empty states — and it
+was reporting on the **real** database. The previous server still held port
+3000, so `next start` had died with `EADDRINUSE` and the probe talked to the
+server that was already there. The output looked exactly like a pass.
+
+Two lessons on top of the original:
+
+- **Killing the shell that launched a server does not kill the server.** Kill by
+  port, then assert the port is free, before starting the next one.
+- **Read the server log, not only the probe output.** The give-away was
+  `EADDRINUSE` in the log and "10 patients" in an empty-state screenshot — the
+  probe itself was perfectly happy.
+
 ---
 
 ### 6d. Deployment gotchas
@@ -443,6 +556,8 @@ app/api/fhir/sync         push one bounded batch     [new, session 4]
 app/api/fhir/import       pull one seeded MRN        [new, session 4]
 app/(dashboard)/integrations/fhir   the integration page   [new, session 4]
 
+components/shell/nav.tsx  rail + bar navigation, active state [new, session 6]
+
 app/error.tsx             public-route boundary        [new, session 3]
 app/(dashboard)/error.tsx in-layout boundary, keeps nav [new, session 3]
 app/global-error.tsx      root-layout failure           [new, session 3]
@@ -458,6 +573,10 @@ lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
 lib/actions/      server actions — every one calls requireClinician()
 lib/db.ts         Prisma singleton (server-only), pool tuned for cold starts
+
+components/ui/    Button · Field · Input · Select · Card · CardHeader · Alert
+                  PageHeader · EmptyState · Skeleton · Badge   — no UI library
+components/patients/identity-banner.tsx   sticky patient identity [session 6]
 ```
 
 **Authorization is three layers deep**, because any one can be misconfigured:
@@ -486,7 +605,36 @@ Recorded in `.docs/01-challenge-analysis.md` §16 and now also in the **README's
 - **D-FHIR-2** Never push back data we pulled.
 - **D-FHIR-5** Rebase `next` links (see §6).
 - **D-QA-1** Verification tooling (`puppeteer-core`) lives in the scratchpad, **never in `package.json`**.
-- **D-QA-2** Restore the demo database after any test that mutates it — its figures are quoted in the README, `state.md` and several PR bodies. *(Currently violated; see §4.)*
+- **D-QA-2** Restore the demo database after any test that mutates it — its figures are quoted in the README, `state.md` and several PR bodies. *(Honoured since session 5: the ugly-CSV rows and the session-6 scratch database were both removed afterwards. The pre-existing drift is A3.)*
+
+New in session 6:
+
+- **D-UI-1** Navigation is a **fixed rail** from `lg` up and the previous
+  horizontal bar below it. One list in `components/shell/nav.tsx` renders both,
+  so a new destination cannot appear in one and silently not the other.
+- **D-UI-2** The work area is **fluid to 1600px**, not full-bleed. Unbounded
+  line length is its own defect and a register still has to be scannable.
+- **D-UI-3** Every page's title and primary action go through `PageHeader`.
+  Each page had been inventing its own, and the action ended up wherever that
+  page happened to put it.
+- **D-UI-4** The palette is **not** re-chosen. It is derived from
+  `questionnaire-dsma8.json` and documented in `globals.css`; the rebuild adds
+  four tokens and replaces none. The risk ramp is byte-for-byte identical,
+  because moderate↔high sit at ΔE 0.4 under deuteranopia and every band must
+  keep its written label.
+- **D-UI-5** Risk bars are **capped at 26rem** rather than fluid. A 10% bar in
+  an 800px track is a mark adrift; length only compares when the eye can hold
+  both ends.
+- **D-UI-6** The dashboard's fourth tile is **higher risk**, not "not yet
+  assessed" — tile one and the distribution both already say the latter. It
+  comes from `higherRiskCount`, a pure function over the same segments the
+  chart draws, asserted against the chart in a test so the two cannot disagree.
+- **D-UI-7** `clinicMetrics` is wrapped in React `cache`. The tiles and the
+  distribution stream into different columns and so cannot share one `await`;
+  without it that is two identical sets of four queries per load.
+- **D-QA-3** A UI claim is made from a **production build**, never the dev
+  server. Three real defects survived every development screenshot this session
+  — see §6.
 
 New in session 4:
 
@@ -526,7 +674,7 @@ New in session 3:
 ## 8b. Git workflow — follow this for every remaining phase
 
 Published at **https://github.com/JoeYoussef44/PulseTrack**, merge-based
-topology, 20 merged PRs, branches kept after merge.
+topology, 30 merged PRs, branches kept after merge.
 
 | PR | Branch | Contents |
 |---|---|---|
@@ -549,6 +697,11 @@ topology, 20 merged PRs, branches kept after merge.
 | #23 | `dev` → `main` | first promotion through the new flow |
 | #24 | `dev` → `main` | deployment badge, outside production |
 | #25 | `test/ugly-csv` | the deliberately ugly CSV + expected-outcomes document |
+| #26 | `docs/session-5` | the session 5 record |
+| #27 | `fix/fhir-loading-skeleton` | the loading state that had stopped matching its page |
+| #28 | `dev` → `main` | promotion of #25–#27 |
+| #29 | `feat/clinical-ui-layout` | the rail, the fluid work area, the patient banner, the four tiles, the register columns |
+| #30 | `dev` → `main` | promotion of #29 — the new UI is live |
 
 ### The branch flow changed in session 5
 
@@ -564,38 +717,46 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**Tier 1 and Tier 2 are complete, deployed and verified live.** Nothing is
-blocked. What is left is one submission-blocking fix and a short QA tail, in
-the order they should be done.
+**Tier 1 and Tier 2 are complete, deployed and verified live**, and the new UI
+is live too. Nothing is blocked. Sessions 5 and 6 cleared everything that was
+submission-blocking; what is left is two checks this machine cannot fake, one
+cosmetic decision, and the email.
 
-1. **Fix the two real email addresses (A2).** The only item that would actively
-   count against the submission: the brief says fabricated data only, and an
-   evaluator clicking *Send assessment* on either record emails a real person.
-   Rename to `@example.test`, keep the assessment history.
+1. **The fresh-clone dry run** (checklist 9.1). Clone into a clean directory
+   and follow the README literally, on a machine that is not this one. The
+   first thing an evaluator does, and the one check this machine cannot
+   honestly perform on itself. CI has already caught one defect of this class —
+   the `LayoutProps` typegen failure in session 5.
 
-2. **Rotate the Resend key (A1).** Joe's, and nobody else can. Verified never
-   in git history or the client bundle, but it was pasted into a transcript.
+2. **The cold start.** Leave the deployment idle an hour and load `/login`. It
+   is the single request an evaluator is guaranteed to make and the one path
+   never observed working end to end (§1b). **Start the clock early** — it costs
+   an hour of waiting, not an hour of work, so kick it off before doing
+   anything else and check back.
 
-3. **Look at the empty and loading states** (checklist 7.1–7.3). Explicitly
-   graded — *"a dashboard with no data should look intentional, not broken"* is
-   the brief's own sentence. **They are built; they have never been seen** (see
-   the correction in §1c). Point a local run at a scratch empty database, walk
-   all five pages, throttle the network to hold the skeletons still, and look.
+3. **Decide A3, the demo figures.** Restore to 3/8/88% or accept 10/16/69%.
+   Cosmetic, but do not leave two numbers disagreeing anywhere an evaluator
+   reads.
 
-4. **The fresh-clone dry run** (9.1). Clone into a clean directory and follow
-   the README literally. The first thing an evaluator does, and the one check
-   this machine cannot honestly perform on itself.
+4. **Write the submission email.** Repo link, live URL, what is built, what is
+   deliberately not, and the things measured rather than claimed — the FHIR
+   import timing, the ugly-CSV outcome, the layout numbers.
 
-5. **Then the cold start.** Leave the deployment idle an hour and load
-   `/login`. It is the single request an evaluator is guaranteed to make and
-   the one path never observed working end to end (§1b).
+5. **Optional, only if 1–4 are done:** phases D and E of the interface plan —
+   the density/table pass and chart reference bands. Both are real improvements
+   with a poorer ratio than A–C. Phase F (icons) is cut: a new dependency and a
+   new licence question the night before a deadline.
 
-6. **Write the submission email.** Repo link, live URL, what is built, what is
-   deliberately not.
-
-7. **Tier 3 stays out of scope** unless 1–6 are all done — its own Definition
+6. **Tier 3 stays out of scope** unless 1–4 are all done — its own Definition
    of Done opens with "Tier 1 and Tier 2 are complete, deployed and QA'd
    first," and the brief warns it evaluates *"judgment, not ambition."*
+
+### Closed this session, do not redo
+
+- ~~Fix the two real email addresses (A2)~~ — done, §4b.
+- ~~Rotate the Resend key (A1)~~ — **closed by Joe**, not by a rotation. §3.
+- ~~Look at the empty and loading states~~ — done, §1d.
+- ~~Promote the UI rebuild (A4)~~ — merged as #30 and verified on the live URL.
 
 ---
 
@@ -612,10 +773,15 @@ the order they should be done.
 CI does not run `next build` — Vercel builds every push already, so duplicating
 it buys nothing and would need real environment variables to mean anything.
 
-A small badge in the dashboard header shows `Preview · <sha>` on any
-non-production deployment, so the two identical-looking URLs can be told apart
-and you can see which commit is actually serving. It renders nothing in
-production and nothing locally.
+A small badge shows `Preview · <sha>` on any non-production deployment, so the
+two identical-looking URLs can be told apart and you can see which commit is
+actually serving. It renders nothing in production and nothing locally. Since
+session 6 it lives in the navigation rail rather than the header.
+
+**Preview deployments are behind Vercel deployment protection.** A preview URL
+answers `200` but redirects to a Vercel SSO login, so it cannot be checked with
+`curl` or a headless browser — only in a browser signed in to the Vercel
+account. Production is open. Plan preview verification as a human step.
 
 Full setup steps are in the README's **Deployment and CI/CD** section.
 
