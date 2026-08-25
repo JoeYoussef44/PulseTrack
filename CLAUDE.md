@@ -71,18 +71,30 @@ Vitest. Deployment target: Vercel.
 ## Git workflow
 
 Every phase ships as a **feature branch and a pull request**, never a direct
-commit to `main`. The incremental history is explicitly evaluated, and the PR
-list is the most legible evidence of it.
+commit to `dev` or `main`. The incremental history is explicitly evaluated, and
+the PR list is the most legible evidence of it.
 
-1. `git checkout -b feat/<phase-name>` off current `main`.
+**Branches map to deployments:** `main` is Vercel Production, `dev` is the
+Preview URL, and every other branch gets its own preview deployment. Work flows
+**feature → dev → main**.
+
+1. `git checkout -b feat/<phase-name>` off current `dev`.
 2. Commit incrementally as the work progresses. Do not squash.
-3. `npm test` and `npm run lint` must pass before the PR is opened.
-4. `gh pr create --base main` with a body that states **what** changed, **why**
+3. `npm test` and `npm run lint` must pass before the PR is opened. CI runs
+   lint, typecheck and tests on the PR as well.
+4. `gh pr create --base dev` with a body that states **what** changed, **why**
    the non-obvious decisions were made, and the **actual test output**.
 5. `gh pr merge <n> --merge` — a merge commit, so the branch topology survives.
-6. Merge as each phase completes; `main` must always be deployable.
+6. Check the preview URL, then promote: `gh pr create --base main --head dev`
+   and merge. `main` must always be deployable.
 
 Branches are kept after merge, not deleted — they are part of the evidence.
+
+**While `dev` and `main` share one database, migrations must be additive.**
+`dev` deploys first, so it applies a migration while production still runs the
+previous code. Adding a nullable column or a table is safe; dropping or
+renaming one breaks production the moment `dev` deploys. See the README's
+Deployment section.
 
 **Push as `JoeYoussef44`.** The machine has three GitHub accounts in the
 keyring; `CoperonDev` is read-only on this repo. If a push is rejected, run
