@@ -131,6 +131,26 @@ export function segmentTone(
   }
 }
 
+/**
+ * Patients whose latest completed assessment put them in the top two bands.
+ *
+ * The number a clinician acts on, as opposed to the number that describes the
+ * register. It reads from the same segments the distribution chart draws, so
+ * the tile and the chart can never disagree — and it counts each patient once,
+ * because `riskDistribution` already did (D-DASH-3).
+ *
+ * Bands with no patients are still present as segments with a count of zero,
+ * so this is a sum over a filter rather than a lookup that can miss.
+ */
+export function higherRiskCount(segments: RiskSegment[]): number {
+  return segments
+    .filter((s) => {
+      const tone = segmentTone(s.label);
+      return tone === "high" || tone === "critical";
+    })
+    .reduce((total, s) => total + s.count, 0);
+}
+
 /* ------------------------------------------------------- upload window --- */
 
 /**

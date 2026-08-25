@@ -7,36 +7,11 @@ import { NO_ASSESSMENT, segmentTone, type RiskSegment } from "@/lib/dashboard/me
  *
  * All server components: none of this needs interactivity, and a one-bar bar
  * chart would be a worse answer than the number itself.
- */
-
-/* ------------------------------------------------------------ hero figure -- */
-
-/**
- * The one number the view leads with. Exactly one per page.
  *
- * Proportional figures, not tabular: `tabular-nums` gives every digit the width
- * of a zero, which makes a number like 121 look gappy at display size. Tabular
- * belongs in columns that must align, not here.
+ * There was a `HeroFigure` here — one oversized number per page. It went when
+ * the overview moved to four equal tiles: a hero is for a sparse page, and this
+ * one is no longer sparse.
  */
-export function HeroFigure({
-  label,
-  value,
-  caption,
-}: {
-  label: string;
-  value: string | number;
-  caption?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1 px-5 py-6">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="text-5xl leading-none font-semibold tracking-tight text-ink">
-        {value}
-      </p>
-      {caption ? <p className="mt-1 text-xs text-muted">{caption}</p> : null}
-    </div>
-  );
-}
 
 /* -------------------------------------------------------------- stat tile -- */
 
@@ -137,7 +112,7 @@ export function RiskDistribution({
       {segments.map((segment) => (
         <div
           key={segment.label}
-          className="grid grid-cols-[9.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[11rem_1fr_5rem]"
+          className="grid grid-cols-[9.5rem_1fr_4.5rem] items-center gap-3 sm:grid-cols-[13rem_minmax(0,26rem)_5rem] sm:gap-4"
         >
           <dt className="text-sm text-ink-2">
             {segment.label}
@@ -147,7 +122,13 @@ export function RiskDistribution({
           </dt>
 
           {/* A single shared baseline, with the track showing the whole
-              register so a share reads without arithmetic. */}
+              register so a share reads without arithmetic.
+
+              The track is capped rather than fluid. Stretched across a wide
+              monitor a 10% bar becomes a 40px mark adrift in 800px of grey,
+              which is less legible than the same bar in a track you can take
+              in at once — length only compares when the eye can hold both
+              ends. */}
           <div className="h-3 w-full overflow-hidden rounded-sm bg-subtle">
             {segment.count > 0 ? (
               <div

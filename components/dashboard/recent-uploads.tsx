@@ -83,7 +83,7 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
         />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[38rem] text-sm">
+          <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-rule text-left">
                 {["File", "Imported", "Rejected", "Already on file", "When"].map(
@@ -91,7 +91,7 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
                     <th
                       key={h}
                       scope="col"
-                      className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                      className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] whitespace-nowrap text-muted uppercase"
                     >
                       {h}
                     </th>
@@ -102,7 +102,15 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
             <tbody>
               {uploads.map((upload) => (
                 <tr key={upload.id} className="border-b border-rule last:border-0">
-                  <td className="px-5 py-3 text-ink">{upload.filename}</td>
+                  {/* The card sits in a column now, so a long filename has to
+                      truncate rather than wrap into three lines. The full name
+                      stays available on hover and to a screen reader. */}
+                  <td
+                    className="max-w-[16rem] truncate px-5 py-3 text-ink"
+                    title={upload.filename}
+                  >
+                    {upload.filename}
+                  </td>
                   <td className="tabular px-5 py-3 text-band-low">
                     {upload.acceptedCount}
                   </td>
