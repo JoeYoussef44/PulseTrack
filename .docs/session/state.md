@@ -1,16 +1,20 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-24**, session 4 (Tier 2 — FHIR push and pull, both
-> verified against the live server).
+> Last updated: **2026-08-25**, session 5 (deployed — CI/CD, the Tier 2
+> explainer, the ugly CSV, and the whole app verified against the live URL).
 
 ---
 
 ## 1. Where we are
 
-**Tier 1 and Tier 2 are both complete except the live deployment**, which is
-blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
-#12–#20.
+**Tier 1 and Tier 2 are complete and deployed.** B2 is cleared: the app is
+live at **https://pulse-track-joe.vercel.app**, building from git, and every
+Definition-of-Done item that needed a deployment has now been run against it.
+Session 5 merged PRs #21–#25.
+
+What remains before submitting is housekeeping and two graded QA items, all
+listed in §9. Nothing is blocked.
 
 | Phase | Status |
 |---|---|
@@ -21,10 +25,11 @@ blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
 | 4 · CSV importer | ✅ Complete |
 | 5 · Dashboards + charts | ✅ Complete |
 | 10 · README + diagrams | ✅ Complete (PR #12) |
-| 6 · Tier 1 gate — deploy + QA | 🟡 **QA done** (#13, #15, #16, #17). Deploy blocked on B2 |
+| 6 · Tier 1 gate — deploy + QA | ✅ Complete. Deployed and re-verified live |
 | 7 · FHIR client + push | ✅ Complete (PR #19) |
 | 8 · FHIR pull + pagination | ✅ Complete (PR #20) |
-| 9 · Tier 2 gate | 🟡 Verified locally against the live server. Deployed run blocked on B2 |
+| 9 · Tier 2 gate | ✅ **Complete.** Import runs from the deployed URL — §1b |
+| 13 · Deploy + CI/CD | ✅ Complete (PRs #22–#24) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
@@ -38,7 +43,7 @@ blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
 | CSV lab upload | 100% |
 | Dashboards | 100% |
 | Documentation (README) | 100% |
-| Live Vercel URL | 0% — **B2, the only thing outstanding** |
+| Live Vercel URL | 100% — https://pulse-track-joe.vercel.app |
 
 ### Tier 2 against the brief's own four requirements
 
@@ -48,11 +53,11 @@ blocked on the Vercel account and on nothing else. Sessions 3–4 merged PRs
 | 2 · Pull the seeded patients and history | 100% — 5 patients, 180 observations |
 | 3 · Auth, failures, retries, no double-import | 100% |
 | 4 · Integration diagram in the README | 100% |
-| Import running from the **deployed** URL | 0% — blocked on B2 |
+| Import running from the **deployed** URL | 100% — 5/5 patients, slowest 3.4s of a 60s ceiling |
 
 ---
 
-### 1b. The Tier 2 explainer
+### 1a. The Tier 2 explainer
 
 `.docs/04-tier2-fhir-integration.html` and its rendered PDF explain the FHIR
 integration the way `02-project-overview.html` explains the product: the
@@ -61,26 +66,69 @@ idempotency guarantees, the failure policy, the performance findings, and what
 the integration deliberately does not do. Written for a reader who has not seen
 the code — it is the document to hand someone before a walkthrough call.
 
-### 1a. The acceptance checklist is now the authority on QA
+### 1b. The deployment, and what was verified against it
+
+**Live: https://pulse-track-joe.vercel.app** — production off `main`, a preview
+off `dev`, both built from git by Vercel. CI is GitHub Actions. See §10.
+
+Measured against the live URL on 2026-08-25, not inferred:
+
+| Check | Result |
+|---|---|
+| **FHIR import from the deployed URL** | 5/5 patients, **slowest 3418ms** against a 60000ms ceiling. Closes Tier 2's DoD. |
+| Idempotency in production | `unchanged=36` per patient — the re-run wrote nothing |
+| **Ugly CSV imported through the real UI** | 29 rows → **11 / 14 / 4**, matching the classifier exactly, in 1.6s |
+| Secrets in the client bundle | 11 chunks, 595KB scanned: **zero** hits for the FHIR key, Resend key, `AUTH_SECRET` or `DATABASE_URL` |
+| Auth boundary | `/dashboard` signed out → 307 to `/login` |
+| Charts on a patient page | 3 charts, 36 plotted points, chronological |
+| Layout at 375px and 1280px | zero horizontal overflow, no console or network errors |
+
+**Two things are still unproven on the live URL** and should not be claimed:
+
+- **The Neon cold start.** Every measurement above was taken against a warm
+  database (first response 741ms). The scenario that matters — an evaluator
+  opening the link days later onto suspended compute — still has never been
+  observed end to end. Leave it idle an hour and load `/login`.
+- **A real assessment email.** Not tested, deliberately: two patient records
+  carry real inboxes (§4), so sending one would email a real person.
+
+### 1c. The acceptance checklist is now the authority on QA
 
 `.docs/03-tier1-acceptance-checklist.html` and its rendered PDF are the
 pre-submission test plan: **112 numbered checks** derived from the brief, the
 official attachments and the Definition of Done, each with how to test it.
 
-Current standing: **29 automated · 55 verified · 22 to test · 6 blocked.**
+Standing at the end of session 5: the **6 deploy-blocked checks are unblocked
+and passing** (§1b), and **the ugly CSV is done** — `.docs/lab-results-ugly.csv`
+with `.docs/05-ugly-csv-expected-outcomes.md`, imported through the live UI and
+matching its predicted 11/14/4.
 
-Work the 22 before submitting. The two that matter most:
+Still to do before submitting:
 
 - **9.1 — clone into a clean directory and follow the README literally.** The
   first thing an evaluator does, on a machine that is not ours, and the one
-  check this machine cannot honestly perform.
-- **The ugly CSV.** The brief promises to test with a deliberately messy file.
-  Build one containing all fourteen failure modes at once and keep it in the
-  repo.
+  check this machine cannot honestly perform on itself.
+- **Look at the empty and loading states** (7.1–7.3). See the correction below.
 
-Also untested and explicitly graded: **empty-database, loading and error
-states** (7.1–7.3). Error boundaries now exist; the empty and loading states
-have still never been looked at.
+#### Correction: the empty and loading states exist
+
+Earlier revisions of this file said they had not been built. **That was wrong**
+and it was repeated for two sessions. They are implemented:
+
+- `EmptyState` is used in **seven** places — dashboard, patients list, patient
+  detail, lab upload, the FHIR integration page, `patient-trends`, and
+  `recent-uploads`.
+- Loading states use **React Suspense with skeleton fallbacks** on the
+  dashboard, patients list and lab upload, plus a route-level `loading.tsx` for
+  `/integrations/fhir`. The patients list keys its boundary on the query, so
+  the skeleton reappears per search rather than showing stale rows.
+
+**The real gap is that none of them has ever been seen.** The database has
+always had data, so no empty state has rendered once, and the skeletons pass
+too fast to inspect. That is the project's recurring failure in its usual form:
+the code existing and its presentation being correct are two separate claims,
+and only the first was ever checked. Verify against a scratch empty database
+and with the network throttled.
 
 ---
 
@@ -97,10 +145,11 @@ have still never been looked at.
 | # | Item | State |
 |---|---|---|
 | ~~B1~~ | ~~`git push` rejected~~ | **CLEARED.** `gh auth switch --user JoeYoussef44`. 17 merged PRs. |
-| **B2** | **Vercel account recovery** | **OPEN. Joe to finish account setup; nobody else can.** A live URL is required, not optional, and is the only incomplete Tier 1 item. |
+| ~~B2~~ | ~~Vercel deployment~~ | **CLEARED, 2026-08-25.** Live at https://pulse-track-joe.vercel.app, deploying from git. Everything it blocked has been re-verified against it — §1b. |
 | ~~B3~~ | ~~No Resend key~~ | **CLEARED.** Resend is configured and sending — see §4a for the constraint that comes with it. |
 | **A1** | **Rotate the Resend API key** | The key was pasted into a chat transcript. Revoke and reissue at resend.com/api-keys. Verified it never reached git history or the client bundle, but treat it as exposed. |
-| **A2** | **Demo data has drifted** | See §4. A patient row currently carries a **real personal email address**. Decide before submitting. |
+| **A2** | **Two patient records carry real personal inboxes** | See §4. `MRN-444` (outlook.com) and `MRN-3410` (gmail.com), both named "Joe Hassib Youssef". The brief says fabricated data only, and **an evaluator clicking Send assessment emails a real person**. Rename to `@example.test`, or delete `MRN-3410` and rename `MRN-444`. |
+| **A3** | **Demo figures no longer match older PR bodies** | Now 10 patients / 16 assessments / 69% / 190 labs. Nothing in the README quotes the old numbers any more, so this is cosmetic — but the live site should look deliberate. |
 
 ---
 
@@ -115,7 +164,7 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 | `AUTH_SECRET` | ✅ | 32 random bytes |
 | `SEED_CLINICIAN_EMAIL` | ✅ | `clinician@pulsetrack.local` |
 | `SEED_CLINICIAN_PASSWORD` | ✅ | Generated — read it from `.env` |
-| `APP_BASE_URL` | ✅ | `http://localhost:3000` |
+| `APP_BASE_URL` | ✅ | `http://localhost:3000` locally. On Vercel it is set for **Production only** — a preview carrying it would email assessment links that leave the preview. Unset, `lib/actions/assessments.ts` falls back to `VERCEL_URL`. |
 | `FHIR_BASE_URL` / `FHIR_CANDIDATE_ID` | ✅ | `cand-joe-l` (not a secret) |
 | `FHIR_API_KEY` | ✅ | **Secret.** Never commit, never log, never `NEXT_PUBLIC_`. |
 | `EMAIL_PROVIDER` | ✅ | `resend` |
@@ -130,10 +179,16 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 Measured at the end of session 3:
 
 ```
-before session 4:  patients=4  assessments=13  labs=10   uploads=1  rate=69%
-after  session 4:  patients=9  assessments=13  labs=190  uploads=1  rate=69%
-                   (+5 seeded patients and +180 observations pulled from FHIR)
+before session 4:  patients=4   assessments=13  labs=10   uploads=1  rate=69%
+after  session 4:  patients=9   assessments=13  labs=190  uploads=1  rate=69%
+after  session 5:  patients=10  assessments=16  labs=190  uploads=1  rate=69%
+                   labs: 180 FHIR + 10 CSV · patients: 5 EXTERNAL_SEED + 5 OWNED
 ```
+
+The session-5 delta is manual testing on the live URL, not the app misbehaving.
+The ugly-CSV import was **restored afterwards** — 11 rows and their upload
+record deleted, back to 190/1 — after first confirming none had been pushed to
+the national platform, where a write cannot be undone (D-QA-2).
 
 **The FHIR-imported rows are not drift** — they are Tier 2 working, they are
 reproducible with one click from `/integrations/fhir`, and an evaluator should
@@ -147,10 +202,16 @@ Two things need a decision before submitting:
 
 1. **Restore or re-document.** Either clean back to 3/8/10 and 88%, or update
    every place that quotes those figures. Do not leave them disagreeing.
-2. **`MRN-444 Joe Hassib Youssef` carries a real personal email address.**
-   It was added so Resend would actually deliver (§4a). A fabricated patient
-   holding a real personal address is the wrong thing to hand an evaluator, and
-   the brief asks for fabricated data only. Remove it or change the address.
+2. **Two records carry real personal inboxes** — `MRN-444 Joe Hassib Youssef`
+   (outlook.com, 6 assessments) and `MRN-3410 Joe Hassib Youssef Test`
+   (gmail.com, 1 assessment). `MRN-444` was added so Resend would actually
+   deliver (§4a); `MRN-3410` is a test row from session 5. Three reasons to fix
+   before submitting, worst last: the brief asks for fabricated data only; a
+   record named "…Test" beside Jane Doe reads as leftover debugging; and
+   **anyone clicking Send assessment on either one emails a real person, with
+   no way of knowing.** Rename to `@example.test` and keep the assessment
+   history — it is useful demo data, and losing real delivery costs nothing
+   because every evaluator lands on the copy-link path anyway (§4a).
 
 Everything is reproducible from `npm run db:seed`, one upload of
 `.docs/lab-results-sample-clean.csv` through `/labs/upload`, and one **Import**
@@ -186,6 +247,7 @@ npm run build        # production build
 npm start            # serve the build
 npm run lint         # eslint
 npm test             # vitest (264 tests)
+npm run typecheck    # next typegen && tsc --noEmit — see §6d
 npm run db:migrate   # prisma migrate dev
 npm run db:deploy    # prisma migrate deploy (production)
 npm run db:seed      # idempotent seed
@@ -250,6 +312,7 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **Edge proxy vs API routes** | The proxy redirected unauthenticated `/api/*` to `/login`; a `fetch` follows it, gets login HTML with a 200, and parses it as JSON — so an expired session showed an *empty report*, not an error. API paths are exempt from the redirect, never from `requireClinicianApi()`. **Any new route handler must authorise itself.** |
 | **csv-parse ragged rows** | With `relax_column_count`, a short row yields a record **missing those keys entirely**, so inferring columns from row one rejects the whole file when the first data row is short. Capture the header from the `columns` callback. |
 | **csv-parse `info.lines`** | The real file line number (header = 1), already correct across blank lines — the number to show a clinician fixing the file in Excel. |
+| **`tsc --noEmit` passes locally, fails on a clean checkout** | Next 16 generates its route/layout helper types (`LayoutProps`, `PageProps`) into `.next/types` during `next dev` and `next build`. Anyone who has run the dev server has them; a fresh clone does not. CI caught this on its own first PR. Fix is `next typegen`, wired into `npm run typecheck` so local and CI run one command — §6d. |
 | **`next dev` edits CLAUDE.md** | It appends an agent-rules block and re-adds it whenever removed. Committed deliberately. |
 | **Recharts x-axis** | A string x-axis is **categorical**: points plot in array order at even spacing. Use `type="number"` + `scale="time"` with millisecond timestamps, and sort in `lib/labs/series.ts`. |
 | **Recharts single point** | One reading makes `dataMin === dataMax`, a zero-width domain where the marker vanishes. `timeDomain()` pads a week either side. Every new patient hits this. |
@@ -345,6 +408,27 @@ Symptoms that should trigger this suspicion immediately:
 
 **Check the port and the process start time before debugging anything else**
 (§5). Do not leave background servers running at the end of a task.
+
+---
+
+### 6d. Deployment gotchas
+
+- **Environment variables are read at build time.** Adding one to Vercel does
+  nothing to a deployment that already exists — redeploy, or it silently keeps
+  the old value. This is the deployment equivalent of §6b's stale dev server.
+- **`APP_BASE_URL` must be Production-only.** Set for Preview as well, a
+  preview deployment emails assessment links pointing at production: the
+  clinician tests on `dev` and the patient lands on the live site.
+- **`dev` and `main` share one Neon database, so migrations must be additive.**
+  `dev` deploys first and applies a migration while production is still running
+  the previous code. Adding a nullable column or a table is safe; a drop or a
+  rename breaks production the moment `dev` deploys — on the URL nobody was
+  testing. Expand-then-contract, or split onto separate Neon branches.
+- **`prisma migrate deploy`, never `migrate dev`,** in the build command.
+  `migrate dev` is interactive and local-only.
+- **Vercel does not run the test suite.** It runs `next build`. A red suite
+  deploys perfectly happily, which is the entire reason GitHub Actions exists
+  here — see §10.
 
 ---
 
@@ -460,44 +544,85 @@ topology, 20 merged PRs, branches kept after merge.
 | #17 | `fix/db-cold-start-timeout` | Neon cold start, bounded pool |
 | #19 | `feat/fhir-push` | FHIR client, mappers, retry/throttle, push, integration page |
 | #20 | `feat/fhir-pull-pagination` | seeded import, pagination, reconciliation, README diagram |
+| #21 | `docs/tier2-explainer` | Tier 2 explainer HTML + 15-page PDF; four corrected numbers |
+| #22 | `chore/vercel-cicd` | `vercel.json`, GitHub Actions CI, env-var script, README deploy section |
+| #23 | `dev` → `main` | first promotion through the new flow |
+| #24 | `dev` → `main` | deployment badge, outside production |
+| #25 | `test/ugly-csv` | the deliberately ugly CSV + expected-outcomes document |
 
-**Every remaining phase ships the same way** — branch, incremental commits,
-tests green, PR with real test output in the body, `--merge` (never squash).
+### The branch flow changed in session 5
 
-No feature branches remain. What is left is deployment and pre-submission QA.
+`main` is Vercel **Production**; `dev` is the **Preview** URL; every other
+branch gets its own preview deployment. Work now flows **feature → dev → main**,
+and `CLAUDE.md` is updated to match — it previously said to branch off `main`
+and PR into it.
+
+Branch, incremental commits, tests green, PR with real output in the body,
+`--merge` (never squash). CI now runs on every PR into `dev` and `main`.
 
 ---
 
 ## 9. Next session — start here
 
-Tier 1 and Tier 2 are both feature-complete. **Everything that remains is either
-Joe's to unblock or is pre-submission work.**
+**Tier 1 and Tier 2 are complete, deployed and verified live.** Nothing is
+blocked. What is left is one submission-blocking fix and a short QA tail, in
+the order they should be done.
 
-1. **B2 (Vercel) is now the only thing standing between this and submission.**
-   It blocks the last Tier 1 item *and* Tier 2's Definition of Done, which
-   requires the import to complete from the deployed URL without a function
-   timeout. Once the account is available: `vercel link`, every `.env` value as
-   a project env var (**including the three `FHIR_` ones**), build command
-   `prisma migrate deploy && next build`, run the seed against production, set
-   `APP_BASE_URL` to the deployed origin, then:
-   - run the seed import from the live URL and confirm no function timeout —
-     each patient measured 2.1–2.4s locally, so this should be comfortable
-   - push a patient from the live URL and confirm it lands under our tag
-   - re-run the acceptance checklist against the live URL
+1. **Fix the two real email addresses (A2).** The only item that would actively
+   count against the submission: the brief says fabricated data only, and an
+   evaluator clicking *Send assessment* on either record emails a real person.
+   Rename to `@example.test`, keep the assessment history.
 
-2. **Settle the demo data (§4) and rotate the Resend key (A1).** Both small,
-   both visible to an evaluator or a security reviewer. Note the demo figures
-   have moved again — see §4.
+2. **Rotate the Resend key (A1).** Joe's, and nobody else can. Verified never
+   in git history or the client bundle, but it was pasted into a transcript.
 
-3. **The remaining 22 acceptance checks.** The two that matter most are
-   unchanged: clone into a clean directory and follow the README literally, and
-   build the one deliberately ugly CSV the brief promises to test with.
+3. **Look at the empty and loading states** (checklist 7.1–7.3). Explicitly
+   graded — *"a dashboard with no data should look intentional, not broken"* is
+   the brief's own sentence. **They are built; they have never been seen** (see
+   the correction in §1c). Point a local run at a scratch empty database, walk
+   all five pages, throttle the network to hold the skeletons still, and look.
 
-4. **Tier 3 stays out of scope** unless everything above is done — its own
-   Definition of Done opens with "Tier 1 and Tier 2 are complete, deployed and
-   QA'd first."
+4. **The fresh-clone dry run** (9.1). Clone into a clean directory and follow
+   the README literally. The first thing an evaluator does, and the one check
+   this machine cannot honestly perform on itself.
+
+5. **Then the cold start.** Leave the deployment idle an hour and load
+   `/login`. It is the single request an evaluator is guaranteed to make and
+   the one path never observed working end to end (§1b).
+
+6. **Write the submission email.** Repo link, live URL, what is built, what is
+   deliberately not.
+
+7. **Tier 3 stays out of scope** unless 1–6 are all done — its own Definition
+   of Done opens with "Tier 1 and Tier 2 are complete, deployed and QA'd
+   first," and the brief warns it evaluates *"judgment, not ambition."*
+
+---
+
+## 10. Deployment and CI/CD
+
+| | |
+|---|---|
+| **Production** | https://pulse-track-joe.vercel.app — built from `main` |
+| **Preview** | built from `dev`, and from every other branch |
+| **CD** | Vercel git integration. Build command is in `vercel.json`, not the dashboard, so it is version-controlled: `prisma migrate deploy && next build` |
+| **CI** | `.github/workflows/ci.yml` — lint, typecheck, tests on every PR into `dev` and `main`. Vercel does **not** run the suite, which is the whole reason this exists |
+| **Env vars** | `bash scripts/vercel-env.sh` pushes `.env` to production and preview. Prints names only, never values. Holds back `APP_BASE_URL` (production-only) and `SEED_CLINICIAN_*` (never read by a build) |
+
+CI does not run `next build` — Vercel builds every push already, so duplicating
+it buys nothing and would need real environment variables to mean anything.
+
+A small badge in the dashboard header shows `Preview · <sha>` on any
+non-production deployment, so the two identical-looking URLs can be told apart
+and you can see which commit is actually serving. It renders nothing in
+production and nothing locally.
+
+Full setup steps are in the README's **Deployment and CI/CD** section.
+
+---
 
 Deeper context: `.docs/01-challenge-analysis.md` (requirements matrix, security
 analysis, evaluator edge cases), `.docs/03-tier1-acceptance-checklist.html`
-(the QA plan), `.docs/04-tier2-fhir-integration.html` (Tier 2 explained) and
-`.docs/candidate-brief.md` (the authority on scope).
+(the QA plan), `.docs/04-tier2-fhir-integration.html` (Tier 2 explained),
+`.docs/05-ugly-csv-expected-outcomes.md` (what the messy file should produce)
+and `.docs/candidate-brief.md` (the authority on scope).
