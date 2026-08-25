@@ -1,0 +1,1013 @@
+<title>Using PulseTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+
+<style>
+  :root{
+    --paper:#F5F7F6;
+    --surface:#FFFFFF;
+    --surface-2:#EBF0EE;
+    --ink:#0F1A17;
+    --ink-2:#31423C;
+    --muted:#63756E;
+    --rule:#D3DDD8;
+    --rule-strong:#AFBEB8;
+    --accent:#0A5A6B;
+    --accent-soft:#E0EEF1;
+    --band-low:#2F7D53;   --band-low-f:#E3F0E8;
+    --band-mod:#9C7817;   --band-mod-f:#F5EDD8;
+    --band-high:#BA5F1D;  --band-high-f:#F8E8DB;
+    --band-vhigh:#AC3028; --band-vhigh-f:#F7E2E0;
+
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0B1210;
+      --surface:#131C19;
+      --surface-2:#1A2521;
+      --ink:#E8EFEC;
+      --ink-2:#B9C8C2;
+      --muted:#8A9D96;
+      --rule:#26332E;
+      --rule-strong:#3E4E48;
+      --accent:#63C8DC;
+      --accent-soft:#11313A;
+      --band-low:#63C08A;   --band-low-f:#16281F;
+      --band-mod:#D3AF4E;   --band-mod-f:#2A2415;
+      --band-high:#E08C52;  --band-high-f:#2C2016;
+      --band-vhigh:#E36A60; --band-vhigh-f:#2E1B19;
+    }
+  }
+
+  :root[data-theme="dark"]{
+    --paper:#0B1210;
+    --surface:#131C19;
+    --surface-2:#1A2521;
+    --ink:#E8EFEC;
+    --ink-2:#B9C8C2;
+    --muted:#8A9D96;
+    --rule:#26332E;
+    --rule-strong:#3E4E48;
+    --accent:#63C8DC;
+    --accent-soft:#11313A;
+    --band-low:#63C08A;   --band-low-f:#16281F;
+    --band-mod:#D3AF4E;   --band-mod-f:#2A2415;
+    --band-high:#E08C52;  --band-high-f:#2C2016;
+    --band-vhigh:#E36A60; --band-vhigh-f:#2E1B19;
+  }
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:clamp(28px,5vw,72px) clamp(20px,5vw,56px) 96px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+
+  /* ---------- masthead ---------- */
+  .mast{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    padding-bottom:34px;
+    border-bottom:2px solid var(--ink);
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font-family:var(--serif);
+    font-size:clamp(42px,7vw,68px);
+    line-height:1.02;
+    font-weight:500;
+    letter-spacing:-.015em;
+    text-wrap:balance;
+    margin:0;
+  }
+  h1 .sub{
+    display:block;
+    font-size:clamp(17px,2.4vw,23px);
+    line-height:1.42;
+    color:var(--ink-2);
+    font-weight:400;
+    margin-top:18px;
+    max-width:34em;
+  }
+  .facts{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:20px 28px;
+    margin-top:8px;
+  }
+  .fact dt{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.11em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .fact dd{
+    margin:0;
+    font-size:14.5px;
+    color:var(--ink);
+  }
+
+  /* ---------- sections ---------- */
+  section{
+    padding-top:52px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+  }
+  h2{
+    font-family:var(--serif);
+    font-size:clamp(26px,3.6vw,36px);
+    line-height:1.14;
+    font-weight:500;
+    letter-spacing:-.01em;
+    margin:0;
+    text-wrap:balance;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--rule);
+  }
+  h2 .tag{
+    display:block;
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:500;
+    margin-bottom:12px;
+  }
+  h3{
+    font-family:var(--sans);
+    font-size:16px;
+    font-weight:600;
+    letter-spacing:-.005em;
+    margin:14px 0 0;
+  }
+  p{margin:0;max-width:68ch}
+  .lede{font-size:17.5px;color:var(--ink-2);max-width:64ch}
+  a{color:var(--accent)}
+  strong{font-weight:600}
+  em{font-style:italic;color:var(--ink-2)}
+
+  ul.plain{margin:0;padding-left:1.1em;max-width:68ch;display:flex;flex-direction:column;gap:9px}
+  ul.plain li::marker{color:var(--rule-strong)}
+
+  code{
+    font-family:var(--mono);
+    font-size:.86em;
+    background:var(--surface-2);
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  /* ---------- capability grid ---------- */
+  .caps{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(232px,1fr));
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    overflow:hidden;
+  }
+  .cap{
+    background:var(--surface);
+    padding:20px 22px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .cap .n{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--accent);
+    letter-spacing:.1em;
+  }
+  .cap h3{margin:0;font-size:15.5px}
+  .cap p{font-size:14px;color:var(--ink-2);line-height:1.55}
+
+  /* ---------- figures ---------- */
+  figure.fig{
+    margin:14px 0 6px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+    background:var(--surface);
+    border:1px solid var(--rule);
+    border-radius:4px;
+    padding:26px clamp(16px,3vw,30px) 22px;
+  }
+  .scroller{overflow-x:auto;}
+  svg.d{
+    display:block;
+    width:100%;
+    min-width:560px;
+    height:auto;
+    color:var(--ink-2);
+    font-family:var(--mono);
+  }
+  figcaption{
+    font-size:13.5px;
+    line-height:1.5;
+    color:var(--muted);
+    max-width:70ch;
+    border-top:1px solid var(--rule);
+    padding-top:13px;
+  }
+  figcaption b{color:var(--ink-2);font-weight:500}
+
+  /* svg primitives */
+  .bx{fill:var(--surface-2);stroke:var(--rule-strong);stroke-width:1}
+  .bx-o{fill:none;stroke:var(--rule-strong);stroke-width:1}
+  .bx-d{fill:none;stroke:var(--rule-strong);stroke-width:1;stroke-dasharray:4 4}
+  .ln{stroke:currentColor;stroke-width:1.3;fill:none}
+  .ln-d{stroke:var(--rule-strong);stroke-width:1.3;fill:none;stroke-dasharray:5 5}
+  .ln-a{stroke:var(--accent);stroke-width:1.5;fill:none}
+  .tick{stroke:var(--rule-strong);stroke-width:1.4}
+  .tick-a{stroke:var(--accent);stroke-width:1.6}
+  .dot{fill:var(--ink);stroke:none}
+  .t-ti{font-size:13px;font-weight:500;fill:var(--ink)}
+  .t-su{font-size:10px;fill:var(--muted)}
+  .t-lb{font-size:10px;fill:var(--muted)}
+  .t-lba{font-size:10px;fill:var(--accent)}
+  .t-ey{font-size:10.5px;letter-spacing:.12em;fill:var(--muted)}
+  .t-bd{font-size:12px;font-weight:500}
+  .t-rg{font-size:12.5px;fill:var(--ink)}
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
+  th,td{text-align:left;padding:11px 16px;border-bottom:1px solid var(--rule);vertical-align:top}
+  thead th{
+    font-family:var(--mono);
+    font-size:10.5px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--muted);
+    font-weight:500;
+    background:var(--surface-2);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .swatch{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+  .swatch i{width:9px;height:9px;border-radius:2px;flex:none}
+
+  /* ---------- item list (questionnaire) ---------- */
+  .items{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  .grp{background:var(--surface);padding:16px 20px 18px;display:flex;flex-direction:column;gap:10px}
+  .grp .gh{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);
+  }
+  .grp ol{margin:0;padding-left:1.35em;display:flex;flex-direction:column;gap:7px;font-size:14.5px;color:var(--ink-2)}
+  .grp ol li::marker{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .grp .why{font-size:13px;color:var(--muted);max-width:64ch}
+
+  /* ---------- callout ---------- */
+  .note{
+    border-left:2px solid var(--accent);
+    background:var(--accent-soft);
+    padding:16px 20px;
+    border-radius:0 4px 4px 0;
+    display:flex;flex-direction:column;gap:7px;
+  }
+  .note .nh{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);
+  }
+  .note p{font-size:14.5px;color:var(--ink-2);max-width:66ch}
+
+  /* ---------- tier strip ---------- */
+  .tiers{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  .tier{background:var(--surface);padding:18px 22px;display:grid;grid-template-columns:112px 1fr;gap:6px 20px;align-items:start}
+  .tier .lab{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink);padding-top:2px}
+  .tier .st{font-family:var(--mono);font-size:10px;color:var(--muted);grid-column:1;letter-spacing:.05em}
+  .tier .bd{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;gap:6px}
+  .tier .bd h3{margin:0;font-size:15.5px}
+  .tier .bd p{font-size:14px;color:var(--ink-2)}
+  @media (max-width:560px){
+    .tier{grid-template-columns:1fr}
+    .tier .bd{grid-column:1;grid-row:auto}
+  }
+
+  /* ---------- out of scope ---------- */
+  .oos{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 26px;max-width:100%}
+  .oos div{
+    font-size:14px;color:var(--ink-2);
+    padding-left:16px;position:relative;line-height:1.45;
+  }
+  .oos div::before{
+    content:"";position:absolute;left:0;top:.62em;
+    width:8px;height:1px;background:var(--rule-strong);
+  }
+
+  /* ---------- talking points ---------- */
+  .tp{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  .tp .row{background:var(--surface);padding:16px 20px;display:flex;flex-direction:column;gap:5px}
+  .tp .q{font-size:15px;font-weight:600}
+  .tp .a{font-size:14px;color:var(--ink-2);max-width:74ch}
+
+  footer{
+    margin-top:64px;padding-top:22px;border-top:1px solid var(--rule);
+    font-family:var(--mono);font-size:11px;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:6px 22px;
+  }
+
+  @media print{
+    body{background:#fff}
+    .wrap{padding:0;max-width:none}
+    section{padding-top:26px}
+    .mast{break-after:avoid}
+    h2{break-after:avoid;break-inside:avoid}
+    h3{break-after:avoid}
+    figure.fig{break-inside:avoid}
+    .note,.tbl-wrap,.grp,.tier,.cap,.tp .row{break-inside:avoid}
+    p,li{orphans:3;widows:3}
+  }
+
+  /* ---------- steps (this document only) ---------- */
+  .steps{display:flex;flex-direction:column;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+  .step{background:var(--surface);padding:19px 22px 21px;display:grid;grid-template-columns:38px 1fr;gap:5px 16px;align-items:start}
+  .step .n{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.06em;padding-top:2px}
+  .step .bd{display:flex;flex-direction:column;gap:9px}
+  .step h3{margin:0;font-size:15.5px}
+  .step p{font-size:14.5px;color:var(--ink-2);max-width:68ch}
+  @media(max-width:560px){.step{grid-template-columns:1fr}.step .n{padding-top:0}}
+
+  /* Six cards: at every width this document is read at, auto-fit must land
+     on 3, 2 or 1 columns — never 4, which strands two empty cells showing the
+     grid gap colour as a bare grey block. */
+  .caps{grid-template-columns:repeat(auto-fit,minmax(268px,1fr))}
+
+  /* what happens, as a consequence list */
+  .wh{display:flex;flex-direction:column;gap:7px;margin-top:1px}
+  .wh div{font-size:13.5px;color:var(--ink-2);padding-left:17px;position:relative;line-height:1.5;max-width:70ch}
+  .wh div::before{content:"";position:absolute;left:0;top:.66em;width:9px;height:1px;background:var(--accent)}
+  .wh b{font-weight:600;color:var(--ink)}
+
+  @media print{
+    .step,.steps{break-inside:avoid}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <div class="eyebrow">Capadev engineering challenge &middot; user guide</div>
+    <h1>Using PulseTrack
+      <span class="sub">Every screen, what happens when you click, and the rules the app will not break — Tier&nbsp;1 and Tier&nbsp;2, end to end.</span>
+    </h1>
+    <dl class="facts">
+      <div class="fact"><dt>Who signs in</dt><dd>Clinicians only. Patients never get an account.</dd></div>
+      <div class="fact"><dt>Covers</dt><dd>All six Tier&nbsp;1 areas and all four Tier&nbsp;2 requirements.</dd></div>
+      <div class="fact"><dt>Read it as</dt><dd>A walkthrough. Each section is one screen.</dd></div>
+      <div class="fact"><dt>Live</dt><dd>pulse-track-joe.vercel.app</dd></div>
+    </dl>
+  </header>
+
+  <!-- ============ 1. THE SHAPE OF THE APP ============ -->
+  <section>
+    <h2><span class="tag">Orientation</span>Five screens, one register, one shared spine</h2>
+
+    <p class="lede">PulseTrack is a clinician tool. Everything it does hangs off a <strong>patient register</strong>, and every record — a lab result, a questionnaire score, a row on the national platform — is attached to a patient by their <strong>MRN</strong>. Learn the register and the rest follows.</p>
+
+    <div class="caps">
+      <div class="cap">
+        <div class="n">01</div>
+        <h3>Clinic</h3>
+        <p>The overview. Four figures for the whole practice, the spread of risk across the register, and what has been imported lately.</p>
+      </div>
+      <div class="cap">
+        <div class="n">02</div>
+        <h3>Patients</h3>
+        <p>The register itself. Search, add, open a record. Each row already carries the patient's latest risk band and most recent lab result, so triage happens here rather than one record at a time.</p>
+      </div>
+      <div class="cap">
+        <div class="n">03</div>
+        <h3>Lab import</h3>
+        <p>Upload a CSV of lab results. Every row is judged individually and the outcome is reported line by line.</p>
+      </div>
+      <div class="cap">
+        <div class="n">04</div>
+        <h3>National platform</h3>
+        <p>Tier&nbsp;2. Push our records to the shared FHIR server, pull twelve months of history back, and see what was refused.</p>
+      </div>
+      <div class="cap">
+        <div class="n">05</div>
+        <h3>The patient page</h3>
+        <p>One person: who they are, four charts, and every assessment and lab result as a table. This is the screen you open with the patient in the room.</p>
+      </div>
+      <div class="cap">
+        <div class="n">06</div>
+        <h3>The questionnaire</h3>
+        <p>The only public page. The patient opens it from a link in their email — no account, no password.</p>
+      </div>
+    </div>
+
+    <p>Navigation is a fixed rail on the left from a laptop width up, and a horizontal bar on a phone. The signed-in clinician and <strong>Sign out</strong> sit at the foot of the rail.</p>
+  </section>
+
+  <!-- ============ 2. SIGNING IN ============ -->
+  <section>
+    <h2><span class="tag">Step 1</span>Signing in</h2>
+
+    <p>Open the site and you land on <code>/login</code>. There is no sign-up: clinician accounts are seeded, and the credentials for the demo account are in the README.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">1.1</div>
+        <div class="bd">
+          <h3>Enter the email and password, press Sign in</h3>
+          <div class="wh">
+            <div>On success you are sent to <b>Clinic</b>, the dashboard. A session cookie is issued; it is a JWT, so nothing about the session is stored server-side.</div>
+            <div>On failure the message is <b>&ldquo;Invalid email or password&rdquo;</b> — the same words for an unknown address as for a wrong password. Telling the two apart would turn the form into a way of discovering who has an account.</div>
+            <div>What you typed stays in the fields. A failed submission that also clears the form makes the user retype something that may well have been right.</div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">1.2</div>
+        <div class="bd">
+          <h3>Try to skip it</h3>
+          <p>Paste <code>/dashboard</code> or any patient URL while signed out and you are redirected to the login page. Authorisation is checked in <strong>three</strong> independent places, because any one of them can be misconfigured:</p>
+          <div class="wh">
+            <div><b>At the edge</b> — the proxy checks the session cookie before the page is ever rendered.</div>
+            <div><b>In the page</b> — every dashboard screen re-checks the session server-side when it renders.</div>
+            <div><b>In the mutation</b> — every action that writes calls <code>requireClinician()</code>, and every API route calls <code>requireClinicianApi()</code>. This is the boundary that actually holds; the first two are conveniences.</div>
+          </div>
+          <p>Hidden buttons are not a security model. A signed-out <code>POST</code> straight at <code>/api/labs/upload</code> is refused by the third layer, not by the absence of a button.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. ADDING A PATIENT ============ -->
+  <section>
+    <h2><span class="tag">Step 2</span>Adding a patient</h2>
+
+    <p><strong>Patients &rarr; Add patient.</strong> Six fields, four of them required. The rules are deliberately strict where being wrong is dangerous and permissive where being unfamiliar is not.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Required</th><th>Rule, and why</th></tr></thead>
+        <tbody>
+          <tr><td>Full name</td><td class="num">Yes</td><td>Up to 200 characters. Stored as typed.</td></tr>
+          <tr><td>MRN</td><td class="num">Yes</td><td>Letters, numbers, spaces, hyphens and underscores. <strong>Uppercased and trimmed on the way in</strong>, so <code>mrn-1001</code> and <code>&nbsp;MRN-1001&nbsp;</code> cannot become two patients. Unique across the register.</td></tr>
+          <tr><td>Date of birth</td><td class="num">Yes</td><td><code>YYYY-MM-DD</code>. Must be a date that exists (<code>2026-02-30</code> is refused rather than rolled forward), not in the future, and within the last 130 years.</td></tr>
+          <tr><td>Sex</td><td class="num">Yes</td><td>Chosen from a list.</td></tr>
+          <tr><td>Email</td><td class="num">No</td><td>Lower-cased. <strong>Needed to send an assessment</strong> — without it the Send button reports that the patient has no address rather than failing silently.</td></tr>
+          <tr><td>Phone</td><td class="num">No</td><td>Digits with <code>+ ( ) - .</code> and spaces. Permissive on purpose: a rule that rejects <code>+961 3 111 001</code> is wrong for most of the world.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What happens when you save</h3>
+    <div class="wh">
+      <div>The input is validated on the server, not only in the browser. Field errors come back attached to their field, <b>with what you typed still in it</b>.</div>
+      <div>A duplicate MRN is caught as a <b>field error on the MRN box</b> — &ldquo;A patient with this MRN already exists&rdquo; — not as a crash. This was a real defect once: the database constraint fired and the page died with a 500.</div>
+      <div>You land on the new patient's record.</div>
+      <div><b>The patient is pushed to the national platform immediately</b>, if the integration is configured, inside a short budget. If the platform is slow or down, the record is queued instead and the save still succeeds — see &sect;7.</div>
+    </div>
+
+    <div class="note">
+      <div class="nh">Deleting</div>
+      <p><strong>Delete</strong> on a patient record asks for confirmation first, and says plainly what goes with it: the patient's assessments and lab results are removed too. It cannot be undone, and it does not remove anything already sent to the national platform — that server does not allow deletes.</p>
+    </div>
+  </section>
+
+  <!-- ============ 4. THE ASSESSMENT ============ -->
+  <section>
+    <h2><span class="tag">Step 3</span>Sending a DSMA-8 assessment</h2>
+
+    <p class="lede">The questionnaire is the part of the product the <em>patient</em> touches. They have no account, so the link itself is the authorisation — which is what makes the rules around it strict.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">3.1</div>
+        <div class="bd">
+          <h3>Press <em>Send assessment</em> on a patient record</h3>
+          <div class="wh">
+            <div>A token is generated — <b>32 bytes of cryptographic randomness</b>, never derived from anything about the patient.</div>
+            <div>Only its <b>SHA-256 hash is stored</b>. The raw token exists in memory for one request and in the patient's inbox. A copy of the database yields no working links.</div>
+            <div>It <b>expires after seven days</b> and is <b>single-use</b>.</div>
+            <div>The email is sent, and the link is <b>also shown to you once</b>, with a <b>Copy link</b> button.</div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3.2</div>
+        <div class="bd">
+          <h3>Why the link is shown to you as well</h3>
+          <p>Because email delivery is not guaranteed and the clinician should not be stuck when it fails. With no email provider configured the app says so and gives you the link; if the provider refuses the recipient, it says that too and gives you the link. Either way the assessment exists and is deliverable.</p>
+          <p>In this demo that is the normal path, not the fallback: the transactional email provider's free tier only delivers to the account owner's own address, and every patient in the register has a fabricated one. <strong>Expect to copy the link.</strong> The brief explicitly allows it.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3.3</div>
+        <div class="bd">
+          <h3>What the patient sees</h3>
+          <p>A single public page: eight statements about the last two weeks, each answered <em>Never</em>, <em>A few days</em>, <em>More than half the days</em> or <em>Nearly every day</em>. All eight are required. The page greets them by first name, and says plainly that it will never ask for a password — because a health link asking for credentials is what a phishing page looks like.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3.4</div>
+        <div class="bd">
+          <h3>What happens on submit</h3>
+          <div class="wh">
+            <div>The answers are validated and the total is <b>recomputed on the server</b>. A score arriving from the browser is ignored entirely — the number becomes a clinical record, so it is never taken on trust.</div>
+            <div>The total, 0&ndash;24, is mapped to a risk band.</div>
+            <div>The assessment is marked complete, and the link stops working.</div>
+            <div>The score appears immediately on the patient's chart, on their row in the register, and in the clinic-wide distribution.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <figure class="fig">
+      <div class="scroller">
+        <svg class="d" viewBox="0 0 800 250" role="img" aria-label="The life of an assessment link: issued, sent, opened and submitted, with expired, invalid and already-complete as dead ends.">
+          <text class="t-ey" x="19" y="26">THE LIFE OF ONE LINK</text>
+
+          <rect class="bx" x="19" y="52" width="168" height="52" rx="3"/>
+          <text class="t-bd" x="103" y="76" text-anchor="middle" fill="currentColor">Issued</text>
+          <text class="t-lb" x="103" y="93" text-anchor="middle">hash stored, not token</text>
+
+          <line class="ln-a" x1="191" y1="78" x2="211" y2="78"/>
+          <path class="ln-a" d="M205 73 L213 78 L205 83"/>
+
+          <rect class="bx" x="217" y="52" width="168" height="52" rx="3"/>
+          <text class="t-bd" x="301" y="76" text-anchor="middle" fill="currentColor">Sent</text>
+          <text class="t-lb" x="301" y="93" text-anchor="middle">emailed or copied</text>
+
+          <line class="ln-a" x1="389" y1="78" x2="409" y2="78"/>
+          <path class="ln-a" d="M403 73 L411 78 L403 83"/>
+
+          <rect class="bx" x="415" y="52" width="168" height="52" rx="3"/>
+          <text class="t-bd" x="499" y="76" text-anchor="middle" fill="currentColor">Opened</text>
+          <text class="t-lb" x="499" y="93" text-anchor="middle">no login needed</text>
+
+          <line class="ln-a" x1="587" y1="78" x2="607" y2="78"/>
+          <path class="ln-a" d="M601 73 L609 78 L601 83"/>
+
+          <rect class="bx" x="613" y="52" width="168" height="52" rx="3"/>
+          <text class="t-bd" x="697" y="76" text-anchor="middle" fill="currentColor">Submitted</text>
+          <text class="t-lb" x="697" y="93" text-anchor="middle">scored on the server</text>
+
+          <line class="ln-d" x1="301" y1="104" x2="301" y2="156"/>
+          <line class="ln-d" x1="499" y1="104" x2="499" y2="156"/>
+          <line class="ln-d" x1="697" y1="104" x2="697" y2="156"/>
+
+          <rect class="bx-d" x="206" y="156" width="190" height="48" rx="3"/>
+          <text class="t-rg" x="301" y="176" text-anchor="middle">Seven days pass</text>
+          <text class="t-lb" x="301" y="193" text-anchor="middle">&ldquo;This link has expired&rdquo;</text>
+
+          <rect class="bx-d" x="404" y="156" width="190" height="48" rx="3"/>
+          <text class="t-rg" x="499" y="176" text-anchor="middle">Wrong token</text>
+          <text class="t-lb" x="499" y="193" text-anchor="middle">&ldquo;This link is not valid&rdquo;</text>
+
+          <rect class="bx-d" x="602" y="156" width="190" height="48" rx="3"/>
+          <text class="t-rg" x="697" y="176" text-anchor="middle">Opened a second time</text>
+          <text class="t-lb" x="697" y="193" text-anchor="middle">&ldquo;Already complete&rdquo;</text>
+
+          <text class="t-su" x="19" y="232">No dead end names the patient, or says whether the link ever existed.</text>
+        </svg>
+      </div>
+      <figcaption>Every dead end is a <b>plain, identically-shaped message</b>. Distinguishing &ldquo;never existed&rdquo; from &ldquo;belongs to someone else&rdquo; would turn a 404 into a way of confirming that a given person is a patient here.</figcaption>
+    </figure>
+
+    <h3>The score, and what each band means</h3>
+    <p>Eight items, each 0&ndash;3, summed. Higher is worse. The bands and their guidance come from the supplied questionnaire definition, not from us.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Score</th><th>Band</th><th>Guidance</th></tr></thead>
+        <tbody>
+          <tr><td class="num">0&ndash;6</td><td><span class="swatch"><i style="background:var(--band-low)"></i>Low risk</span></td><td>Routine follow-up.</td></tr>
+          <tr><td class="num">7&ndash;12</td><td><span class="swatch"><i style="background:var(--band-mod)"></i>Moderate risk</span></td><td>Review at next appointment.</td></tr>
+          <tr><td class="num">13&ndash;18</td><td><span class="swatch"><i style="background:var(--band-high)"></i>High risk</span></td><td>Clinician should contact the patient.</td></tr>
+          <tr><td class="num">19&ndash;24</td><td><span class="swatch"><i style="background:var(--band-vhigh)"></i>Very high risk</span></td><td>Prompt clinical review recommended.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <div class="nh">Why every band is written out, never colour alone</div>
+      <p>The four band colours are a continuous green&rarr;yellow&rarr;orange&rarr;red ramp, so neighbouring bands are always close. Measured under deuteranopia, <strong>moderate and high sit at &Delta;E&nbsp;0.4</strong> — indistinguishable. Every band therefore carries its written label wherever it appears, and no two adjacent bands are ever drawn as touching segments of one bar.</p>
+    </div>
+  </section>
+
+  <!-- ============ 5. LAB RESULTS ============ -->
+  <section>
+    <h2><span class="tag">Step 4</span>Importing lab results from a CSV</h2>
+
+    <p class="lede">This is the screen most worth understanding, because it is the one that has to cope with a file somebody else produced. Anyone can accept a well-formed CSV. What the brief actually asks for is that a <em>messy</em> file explains itself.</p>
+
+    <h3>Pressing <em>Download template</em></h3>
+    <p>The link on the import card downloads <code>lab-results-template.csv</code> straight from the site — no dialog, no server round trip, nothing is recorded. It is a real file with a header row and three example rows, and it is the shape the importer expects:</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Column</th><th>Required</th><th>What it must contain</th></tr></thead>
+        <tbody>
+          <tr><td><code>mrn</code></td><td class="num">Yes</td><td>The MRN of a patient <strong>who already exists</strong> in the register. Matching ignores case.</td></tr>
+          <tr><td><code>collected_date</code></td><td class="num">Yes</td><td><code>YYYY-MM-DD</code>. A real date, not in the future.</td></tr>
+          <tr><td><code>test_code</code></td><td class="num">Yes</td><td>One of <code>GLU-F</code>, <code>HBA1C</code>, <code>SBP</code>.</td></tr>
+          <tr><td><code>value</code></td><td class="num">Yes</td><td>Digits and an optional decimal point. Nothing else.</td></tr>
+          <tr><td><code>test_name</code></td><td class="num">No</td><td>Cosmetic. A mismatch is a note on the row, not a rejection.</td></tr>
+          <tr><td><code>unit</code></td><td class="num">No</td><td>Checked against the expected unit. A mismatch is flagged and the value is stored <strong>exactly as reported</strong>.</td></tr>
+          <tr><td><code>ref_low</code>, <code>ref_high</code></td><td class="num">No</td><td>Chart furniture. Malformed or inverted, and the standard range is used instead with a note.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Three tests are supported, because those are the three the brief's own sample file uses:</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Code</th><th>Test</th><th>Unit</th><th>Normal range</th></tr></thead>
+        <tbody>
+          <tr><td class="num">GLU-F</td><td>Fasting Glucose</td><td class="num">mg/dL</td><td class="num">70 &ndash; 99</td></tr>
+          <tr><td class="num">HBA1C</td><td>Hemoglobin A1c</td><td class="num">%</td><td class="num">4.0 &ndash; 5.6</td></tr>
+          <tr><td class="num">SBP</td><td>Systolic Blood Pressure</td><td class="num">mmHg</td><td class="num">90 &ndash; 120</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Pressing <em>Import</em></h3>
+    <p>Choose a file, press Import, and it goes through four stages. A failure at any stage is reported in the language of the file you supplied — a line number and a reason — never as a stack trace or a bare count.</p>
+
+    <figure class="fig">
+      <div class="scroller">
+        <svg class="d" viewBox="0 0 800 310" role="img" aria-label="The four stages of a CSV import: the file is checked, parsed, each row classified into one of three outcomes, and accepted rows written in one transaction.">
+          <text class="t-ey" x="19" y="26">ONE FILE, FOUR STAGES</text>
+
+          <rect class="bx" x="19" y="48" width="168" height="56" rx="3"/>
+          <text class="t-bd" x="103" y="72" text-anchor="middle" fill="currentColor">1 &middot; The file</text>
+          <text class="t-lb" x="103" y="89" text-anchor="middle">csv, not empty, 2 MB</text>
+
+          <line class="ln-a" x1="191" y1="76" x2="211" y2="76"/>
+          <path class="ln-a" d="M205 71 L213 76 L205 81"/>
+
+          <rect class="bx" x="217" y="48" width="168" height="56" rx="3"/>
+          <text class="t-bd" x="301" y="72" text-anchor="middle" fill="currentColor">2 &middot; Parsed</text>
+          <text class="t-lb" x="301" y="89" text-anchor="middle">BOM, CRLF, ragged</text>
+
+          <line class="ln-a" x1="389" y1="76" x2="409" y2="76"/>
+          <path class="ln-a" d="M403 71 L411 76 L403 81"/>
+
+          <rect class="bx" x="415" y="48" width="168" height="56" rx="3"/>
+          <text class="t-bd" x="499" y="72" text-anchor="middle" fill="currentColor">3 &middot; Rows judged</text>
+          <text class="t-lb" x="499" y="89" text-anchor="middle">one at a time</text>
+
+          <line class="ln-a" x1="587" y1="76" x2="607" y2="76"/>
+          <path class="ln-a" d="M601 71 L609 76 L601 81"/>
+
+          <rect class="bx" x="613" y="48" width="168" height="56" rx="3"/>
+          <text class="t-bd" x="697" y="72" text-anchor="middle" fill="currentColor">4 &middot; Written</text>
+          <text class="t-lb" x="697" y="89" text-anchor="middle">one transaction</text>
+
+          <line class="ln-d" x1="499" y1="104" x2="499" y2="132"/>
+          <line class="ln-d" x1="130" y1="132" x2="670" y2="132"/>
+          <line class="ln-d" x1="130" y1="132" x2="130" y2="162"/>
+          <line class="ln-d" x1="400" y1="132" x2="400" y2="162"/>
+          <line class="ln-d" x1="670" y1="132" x2="670" y2="162"/>
+
+          <rect class="bx-o" x="10" y="162" width="240" height="78" rx="3"/>
+          <rect x="10" y="162" width="4" height="78" fill="var(--band-low)"/>
+          <text class="t-bd" x="28" y="186" fill="currentColor">Imported</text>
+          <text class="t-lb" x="28" y="205">Valid, and not already on file.</text>
+          <text class="t-lb" x="28" y="223">Inserted now.</text>
+
+          <rect class="bx-o" x="280" y="162" width="240" height="78" rx="3"/>
+          <rect x="280" y="162" width="4" height="78" fill="var(--band-vhigh)"/>
+          <text class="t-bd" x="298" y="186" fill="currentColor">Rejected</text>
+          <text class="t-lb" x="298" y="205">Cannot be trusted as a record.</text>
+          <text class="t-lb" x="298" y="223">Every reason listed, not one.</text>
+
+          <rect class="bx-o" x="550" y="162" width="240" height="78" rx="3"/>
+          <rect x="550" y="162" width="4" height="78" fill="var(--rule-strong)"/>
+          <text class="t-bd" x="568" y="186" fill="currentColor">Already imported</text>
+          <text class="t-lb" x="568" y="205">Same patient, date and test.</text>
+          <text class="t-lb" x="568" y="223">Not an error.</text>
+
+          <text class="t-su" x="19" y="272">A row failing never stops the file: the valid rows still import.</text>
+          <text class="t-su" x="19" y="292">Line numbers are the file&rsquo;s own, blank lines included.</text>
+        </svg>
+      </div>
+      <figcaption><b>Three outcomes, not two.</b> The obvious design is accepted/rejected, and the requirement that breaks it is &ldquo;re-uploading a corrected file must not create duplicates&rdquo;. Under two states, the nine rows that were already fine come back as <em>errors</em> — alarming and false. Nothing is wrong with them; they are simply already on file.</figcaption>
+    </figure>
+
+    <h3>What gets a row rejected</h3>
+    <p>Every problem with a row is collected, not just the first. A clinician fixing a file wants all of its faults in one pass rather than one per upload.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Rejected when</th></tr></thead>
+        <tbody>
+          <tr><td>MRN</td><td>Missing, or no patient in the register has it. The message says to add the patient first or correct the MRN.</td></tr>
+          <tr><td>Collected date</td><td>Missing; not <code>YYYY-MM-DD</code>; not a real date (<code>2026-02-30</code>); or in the future.</td></tr>
+          <tr><td>Test code</td><td>Missing, or not one of the three supported codes — which the message lists.</td></tr>
+          <tr><td>Value</td><td>Missing; not a plain number; negative; or implausibly large. <code>7,1</code>, <code>&lt;5</code> and <code>1e3</code> are all refused rather than guessed at — a decimal comma read as <code>7</code>, or a censored result invented as a number, is worse than a rejection.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What only earns a note</h3>
+    <p>An error means the row cannot be trusted as a clinical record. A warning means something was cosmetically off but the measurement is intact — so it imports, and the oddity is reported on the row.</p>
+
+    <div class="wh">
+      <div><b>A test name that does not match the code.</b> Stored under the catalogue name, with a note.</div>
+      <div><b>A unit that does not match the test.</b> The value is stored <b>exactly as reported</b> and flagged — never relabelled. Rewriting a glucose of 5.8&nbsp;mmol/L as 5.8&nbsp;mg/dL would turn a normal result into a fatal-looking one while appearing to be a tidy-up. Case and spacing differences normalise silently.</div>
+      <div><b>A malformed or inverted reference range.</b> The standard range is used instead, with a note. A reference range is chart furniture; it is never worth rejecting a measurement over.</div>
+    </div>
+
+    <h3>What gets a row skipped</h3>
+    <div class="wh">
+      <div><b>It duplicates an earlier line in the same file</b> — same patient, date and test. The first wins, and the message names the line it duplicates so you can go and fix the file.</div>
+      <div><b>It is already on file with the same value.</b> Nothing to do.</div>
+      <div><b>It is already on file with a <em>different</em> value.</b> The stored result is <b>left unchanged</b> and the message tells you what is on file. Silently overwriting a stored clinical result would make the import non-idempotent — upload the same file twice, get different data — and is the wrong default regardless. Saying so plainly lets the clinician decide.</div>
+    </div>
+
+    <h3>The report</h3>
+    <p>The result is a per-row table, not a count. Three totals across the top — <strong>Imported</strong>, <strong>Rejected</strong>, <strong>Already imported</strong> — then filter chips and one row per line of your file, showing the line number, what was in it, the outcome and the reason.</p>
+
+    <div class="wh">
+      <div>If anything was rejected, the table <b>opens on the rejected rows</b>. That is what you came to see.</div>
+      <div>If every row was already on file, it says so as information, not as a failure.</div>
+      <div>If the integration is on, it tells you how many results are now <b>queued for the national platform</b>, with a link to send them. They are deliberately not pushed during the import, so a slow platform can never delay this report.</div>
+    </div>
+
+    <div class="note">
+      <div class="nh">Try it with the deliberately ugly file</div>
+      <p><code>.docs/lab-results-ugly.csv</code> is 29 rows built to break things: a UTF-8 BOM, CRLF endings, blank lines mid-file, one short row, one long row, and fourteen distinct ways of being invalid. Expected outcome — <strong>11 imported, 14 rejected, 4 already on file</strong> — is written down in <code>.docs/05-ugly-csv-expected-outcomes.md</code> before you run it. Import it and the totals should match exactly.</p>
+    </div>
+  </section>
+
+  <!-- ============ 6. THE PATIENT PAGE ============ -->
+  <section>
+    <h2><span class="tag">Step 5</span>Reading one patient</h2>
+
+    <p>Open any row in the register. This is the screen for an appointment: who they are at the top and pinned there while you scroll, then the trend, then the underlying records.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="n">5.1</div>
+        <div class="bd">
+          <h3>The identity banner</h3>
+          <p>Name, MRN, date of birth, sex, contact details and their current risk band — sticky, so the record you are reading is never in doubt as you scroll. <strong>Send assessment</strong>, <strong>Edit</strong> and <strong>Delete</strong> live here.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">5.2</div>
+        <div class="bd">
+          <h3>Four charts, side by side</h3>
+          <p>DSMA-8 score history plus one chart per lab measure — never two measures on one pair of axes. A dual axis lets you imply any correlation you like by choosing the scales, so there isn't one.</p>
+          <div class="wh">
+            <div>The x-axis is <b>real time</b>, not the order rows happened to be stored, so a gap in the record looks like a gap.</div>
+            <div>The score chart is <b>fixed to 0&ndash;24</b>. An auto-scaled axis would rescale between visits and make a two-point improvement look like a collapse.</div>
+            <div>A patient with a <b>single reading</b> still shows a visible marker, with a week padded either side — every newly created patient hits this.</div>
+            <div>Each empty chart says what will appear there and how to make it appear.</div>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">5.3</div>
+        <div class="bd">
+          <h3>Two tables, abreast</h3>
+          <p><strong>Assessments</strong>: when each was sent, its status, when it was completed, the score and the band. <strong>Lab results</strong>: every stored result, newest first, with its value, unit, reference range and where it came from. The tables are the charts in full — <strong>no value is reachable only by hovering</strong>, which matters for anyone reading this on a touchscreen or with a keyboard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. THE DASHBOARD ============ -->
+  <section>
+    <h2><span class="tag">Step 6</span>Reading the whole clinic</h2>
+
+    <p><strong>Clinic</strong> is four figures, one distribution and a list of recent imports.</p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Figure</th><th>Exactly what it counts</th></tr></thead>
+        <tbody>
+          <tr><td>Patients</td><td>Everyone in the register, with how many have completed an assessment and how many have not.</td></tr>
+          <tr><td>Assessment completion</td><td>Completed &divide; <strong>all sent, all time</strong>. Shown as <code>&mdash;</code> when nothing has been sent, because 0% of nothing is not 0%.</td></tr>
+          <tr><td>Higher risk</td><td>Patients whose <strong>latest completed</strong> assessment was High or Very high. It is computed from the same segments the chart below draws, and a test asserts the two agree — so the tile and the chart cannot disagree.</td></tr>
+          <tr><td>Lab results on file</td><td>Every stored result, from CSV imports and from the national platform alike.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Patients by risk band</h3>
+    <p>One labelled bar per band — never stacked, never a pie, because comparing four adjacent hues by area is exactly the task the palette cannot support. Each patient is counted <strong>once</strong>, by their most recent completed assessment. Patients who have never completed one appear as their own <em>No assessment</em> segment rather than being dropped, so the segments always sum to the size of the register.</p>
+
+    <h3>Recent lab imports, and the one filter</h3>
+    <p>The date range — 7, 30, 90 days or all time, defaulting to 30 — <strong>scopes the imports card only</strong>. That is deliberate, and it is the sort of thing a dashboard usually gets wrong. Completion rate is an all-time figure and the risk distribution is a snapshot of the register today; narrowing either to &ldquo;the last 7 days&rdquo; would not make it a smaller truth, it would make it a false one.</p>
+  </section>
+
+  <!-- ============ 8. TIER 2 ============ -->
+  <section>
+    <h2><span class="tag">Tier 2</span>The national platform</h2>
+
+    <p class="lede">A shared FHIR R4 server that every candidate on this challenge writes to. Two directions: our records go out, and twelve months of history for five patients we do not own comes back. One screen — <strong>National platform</strong> — answers the three questions anyone actually has about an external system: is it connected, did our data get there, and what did not.</p>
+
+    <div class="note">
+      <div class="nh">The fact that shapes everything else</div>
+      <p><strong>Reads on that server are open to everyone; writes are not.</strong> Anything we create is tagged as ours, and only we can change it. The five demonstration patients are tagged to the challenge administrator, so we can read their entire history and can never write to them. Five other candidates already hold the MRN we would have used — which is why every write is scoped by our own tag rather than by MRN alone.</p>
+    </div>
+
+    <figure class="fig">
+      <div class="scroller">
+        <svg class="d" viewBox="0 0 800 300" role="img" aria-label="Two directions between PulseTrack and the national platform: our patients and locally-entered results are pushed out; five seeded patients and their observations are pulled in. Pulled data is never pushed back.">
+          <text class="t-ey" x="24" y="26">TWO DIRECTIONS, ONE RULE</text>
+
+          <rect class="bx" x="24" y="58" width="236" height="184" rx="3"/>
+          <text class="t-ti" x="142" y="86" text-anchor="middle">PulseTrack</text>
+          <text class="t-lb" x="142" y="104" text-anchor="middle">our database</text>
+          <line x1="44" y1="120" x2="240" y2="120" class="tick"/>
+          <text class="t-lb" x="44" y="146">Patients we entered</text>
+          <text class="t-lb" x="44" y="168">Results from our CSV imports</text>
+          <text class="t-lb" x="44" y="190">Patients pulled from the platform</text>
+          <text class="t-lb" x="44" y="212">Results pulled from the platform</text>
+
+          <rect class="bx" x="540" y="58" width="236" height="184" rx="3"/>
+          <text class="t-ti" x="658" y="86" text-anchor="middle">National platform</text>
+          <text class="t-lb" x="658" y="104" text-anchor="middle">shared FHIR R4 server</text>
+          <line x1="560" y1="120" x2="756" y2="120" class="tick"/>
+          <text class="t-lb" x="560" y="146">Tagged to us &mdash; writable</text>
+          <text class="t-lb" x="560" y="168">Tagged to others &mdash; read only</text>
+          <text class="t-lb" x="560" y="190">MRN-2001 &hellip; MRN-2005</text>
+          <text class="t-lb" x="560" y="212">36 observations each</text>
+
+          <line class="ln-a" x1="266" y1="126" x2="530" y2="126"/>
+          <path class="ln-a" d="M524 121 L532 126 L524 131"/>
+          <text class="t-lba" x="398" y="116" text-anchor="middle">PUSH &mdash; patients, and results we imported</text>
+
+          <line class="ln" x1="534" y1="188" x2="270" y2="188"/>
+          <path class="ln" d="M276 183 L268 188 L276 193"/>
+          <text class="t-lb" x="402" y="178" text-anchor="middle">PULL &mdash; five patients and their history</text>
+
+          <rect class="bx-d" x="232" y="240" width="336" height="46" rx="3"/>
+          <text class="t-rg" x="400" y="260" text-anchor="middle">What we pulled is never pushed back</text>
+          <text class="t-lb" x="400" y="277" text-anchor="middle">it is already there, and not ours to restate</text>
+        </svg>
+      </div>
+      <figcaption>The <b>Results sent</b> figure on the page reads <em>&ldquo;locally-entered results only&rdquo;</em> for exactly this reason: pushing pulled data back would duplicate a record the platform already holds, under our tag, where it would then look like our observation.</figcaption>
+    </figure>
+
+    <h3>What the page shows before you press anything</h3>
+    <div class="wh">
+      <div><b>Connection</b> — the server address and our organisation tag, and whether the integration is configured at all. If it is not, the page says which environment variables are missing and states that <b>the rest of PulseTrack works without them</b>.</div>
+      <div><b>Six figures</b> — patients linked, results sent, queued, last sent, patients imported, results imported.</div>
+      <div>All of it is read from <b>our own rows</b>, never from the platform. So the page renders in full when the platform is unreachable — which is precisely when someone opens it.</div>
+    </div>
+
+    <h3>Pressing <em>Push</em></h3>
+    <div class="wh">
+      <div>A batch of <b>20 records</b> per request, repeating until the queue is empty. Each batch is bounded so it finishes well inside the serverless function's budget rather than being cut off by it.</div>
+      <div>A patient referenced by a queued result is <b>linked first</b>, before any result is sent. Without that ordering, two results for the same unlinked patient would each create that patient, on a server where a duplicate cannot be deleted.</div>
+      <div>Writes are <b>conditional</b>: creating the same patient twice returns the existing record rather than a second copy. Re-running a push that already succeeded writes nothing.</div>
+      <div><b>Email and phone are never sent.</b> Reads are open to every other organisation on that server, and a demonstration integration has no business publishing contact details.</div>
+    </div>
+
+    <h3>Pressing <em>Import</em></h3>
+    <div class="wh">
+      <div>Five MRNs, <b>one request each</b>, so a slow platform cannot take the whole import over the time limit — and so the row for MRN-2003 can say what happened to MRN-2003 rather than being lost in one aggregate count.</div>
+      <div>The MRNs are an <b>allow-list</b>, not a text box. An authenticated session cannot be turned into a way of reading arbitrary records off a shared server.</div>
+      <div>Each patient's history is <b>36 observations across two pages</b>. Paging is followed to the end; the loop stops when there is no next page, never on a total the server may not send.</div>
+      <div>Imported results land in the same tables as local data, so they appear on the same charts, in the same tables, and in the same clinic figures.</div>
+      <div>Run it twice and the second run writes nothing: rows are compared before being written, so an unchanged re-import is idempotent <em>and</em> cheap.</div>
+    </div>
+
+    <h3>When a result already exists locally</h3>
+    <p>The same rule as the CSV importer, for the same reason: the link to the platform's record is attached, and <strong>the stored value is never overwritten</strong>. A disagreement between what we hold and what the platform holds is counted and shown, not silently resolved in either direction.</p>
+
+    <h3>Records the platform would not accept</h3>
+    <p>A table at the foot of the page, never a silent retry. It distinguishes <strong>Refused</strong> — the platform will not let us write that record, which is a fact about ownership and will not improve on a retry — from <strong>Failed</strong>, a transient fault worth trying again. Transient failures are retried automatically with a backoff; refusals are surfaced, with whatever the platform actually said.</p>
+  </section>
+
+  <!-- ============ 9. RULES ============ -->
+  <section>
+    <h2><span class="tag">The rules</span>Eight things the app will not do, whatever you click</h2>
+
+    <div class="tp">
+      <div class="row">
+        <div class="q">It will not trust a score from a browser</div>
+        <div class="a">Assessment totals are always recomputed on the server from the stored answers. A total posted by a client is discarded before it is read.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not overwrite a stored clinical result</div>
+        <div class="a">Neither a re-uploaded CSV row nor an imported platform observation may change a value already on file. The conflict is reported and the clinician decides.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not create a duplicate from a repeated import</div>
+        <div class="a">A result is identified by patient, date and test. Re-uploading the same file, or re-running the same import, writes nothing at all.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not reject a whole file for one bad row</div>
+        <div class="a">Rows are judged individually. Eleven valid rows import even when fourteen others do not.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not tell an anonymous visitor whether a record exists</div>
+        <div class="a">An invalid assessment link, an expired one and one belonging to somebody else all produce the same shape of message. A 404 that distinguishes them is a way to enumerate patients.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not log patient data</div>
+        <div class="a">Server logs carry ids and counts. No names, no email addresses, no MRNs, no answers, no tokens.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not let a hidden button be the security boundary</div>
+        <div class="a">Every mutation re-authorises on the server. The edge check and the missing button are conveniences.</div>
+      </div>
+      <div class="row">
+        <div class="q">It will not publish contact details to the shared platform</div>
+        <div class="a">Email and phone stay in our database. Everything else on that server is readable by every other organisation using it.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10. NOT IN SCOPE ============ -->
+  <section>
+    <h2><span class="tag">Scope</span>What it deliberately does not do</h2>
+
+    <p>Each of these is a decision, not an omission. Naming them is cheaper than letting a reader discover them and wonder.</p>
+
+    <div class="oos">
+      <div><strong>No patient accounts.</strong> Patients hold a single-use link and nothing else.</div>
+      <div><strong>No roles or permissions.</strong> One clinician role; there is no admin tier to get wrong.</div>
+      <div><strong>No editing of a stored lab result.</strong> Delete and re-import instead — a mutable clinical value needs an audit trail this does not have.</div>
+      <div><strong>No reminders or scheduling.</strong> Assessments are sent when a clinician sends them.</div>
+      <div><strong>No background jobs.</strong> The push queue drains when someone presses Push; a demonstration deployment has no worker.</div>
+      <div><strong>No dark mode in the app.</strong> One well-executed light theme, deliberately — clinical software is read in bright rooms and printed.</div>
+      <div><strong>No compliance claim.</strong> The practices here are good practice. Good practice is not HIPAA or GDPR compliance, and this document will not pretend otherwise.</div>
+      <div><strong>No writes back to another organisation's records</strong> on the national platform, which that server would refuse anyway.</div>
+    </div>
+  </section>
+
+  <!-- ============ 11. COVERAGE ============ -->
+  <section>
+    <h2><span class="tag">Coverage</span>Where each requirement is satisfied</h2>
+
+    <h3>Tier 1 — the brief's six areas</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Requirement</th><th>Where you see it</th></tr></thead>
+        <tbody>
+          <tr><td>Authentication</td><td><code>/login</code>, and the three-layer check behind every other screen. &sect;2</td></tr>
+          <tr><td>Patient management</td><td><strong>Patients</strong> — register, search, add, edit, delete. &sect;3</td></tr>
+          <tr><td>Email questionnaire flow</td><td><strong>Send assessment</strong> on a patient, then the public questionnaire page. &sect;4</td></tr>
+          <tr><td>CSV lab upload</td><td><strong>Lab import</strong>, and the per-row report it produces. &sect;5</td></tr>
+          <tr><td>Dashboards</td><td><strong>Clinic</strong>, and the four charts on each patient. &sect;6, &sect;7</td></tr>
+          <tr><td>Documentation</td><td>The README, and this guide.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Tier 2 — the brief's four requirements</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Requirement</th><th>Where you see it</th></tr></thead>
+        <tbody>
+          <tr><td>Push patients and lab results</td><td><strong>National platform &rarr; Push</strong>, plus the automatic push when a patient is saved. &sect;8</td></tr>
+          <tr><td>Pull the seeded patients and their history</td><td><strong>National platform &rarr; Import</strong> — five patients, 36 observations each. &sect;8</td></tr>
+          <tr><td>Authentication, failures, retries, no double-import</td><td>The connection card, the failures table, and the fact that a second run writes nothing. &sect;8</td></tr>
+          <tr><td>An integration diagram</td><td>The README, and <code>.docs/04-tier2-fhir-integration.html</code> for the full account.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <div class="nh">If you have ten minutes and want to see everything work</div>
+      <p>Sign in &rarr; <strong>Clinic</strong> to see the register at a glance &rarr; open a patient and read the four charts &rarr; <strong>Send assessment</strong>, copy the link, open it in a private window and complete it, then reload the patient &rarr; <strong>Lab import</strong>, download the template, then import <code>.docs/lab-results-ugly.csv</code> and check the totals against <code>05-ugly-csv-expected-outcomes.md</code> &rarr; <strong>National platform</strong>, press <strong>Import</strong>, then press it again and watch the second run write nothing.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>PulseTrack &mdash; user guide</span>
+    <span>Capadev engineering challenge</span>
+    <span>Companion documents: 02 project overview &middot; 04 Tier 2 integration &middot; 03 acceptance checklist</span>
+  </footer>
+
+</div>
