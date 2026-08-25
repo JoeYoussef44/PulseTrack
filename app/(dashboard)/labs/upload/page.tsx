@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { UploadForm } from "@/components/labs/upload-form";
-import { Card, CardHeader, EmptyState, Skeleton } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  EmptyState,
+  PageHeader,
+  Skeleton,
+} from "@/components/ui";
 import { requireClinician } from "@/lib/auth/session";
 import { recentUploads } from "@/lib/labs/service";
 
@@ -86,15 +92,10 @@ export default async function LabUploadPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          Lab import
-        </h1>
-        <p className="text-sm text-muted">
-          Import fasting glucose, HbA1c and blood pressure results from a CSV.
-          Re-uploading a corrected file never creates duplicates.
-        </p>
-      </div>
+      <PageHeader
+        title="Lab import"
+        description="Import fasting glucose, HbA1c and blood pressure results from a CSV. Re-uploading a corrected file never creates duplicates."
+      />
 
       <UploadForm />
 

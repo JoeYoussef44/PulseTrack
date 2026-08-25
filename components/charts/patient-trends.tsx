@@ -14,6 +14,10 @@ import type { LabSeries, ScorePoint } from "@/lib/labs/series";
  *
  * Every chart here has a table twin further down the page, so no value is
  * reachable only by hovering.
+ *
+ * Both exports return bare cards rather than their own grid: the page places
+ * all four charts — score, glucose, HbA1c, pressure — in one grid, so they
+ * share a single set of column tracks and line up as a block.
  */
 
 export function LabTrends({ series }: { series: LabSeries[] }) {
@@ -30,7 +34,7 @@ export function LabTrends({ series }: { series: LabSeries[] }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <>
       {series.map((s) => {
         const latest = s.points[s.points.length - 1];
         const banded = s.refLow != null && s.refHigh != null;
@@ -61,7 +65,7 @@ export function LabTrends({ series }: { series: LabSeries[] }) {
           </Card>
         );
       })}
-    </div>
+    </>
   );
 }
 

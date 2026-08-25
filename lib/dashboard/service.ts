@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { prisma } from "@/lib/db";
 import { AssessmentStatus } from "@/lib/generated/prisma/enums";
 
@@ -27,7 +29,13 @@ export interface ClinicMetrics {
   assessedPatientCount: number;
 }
 
-export async function clinicMetrics(): Promise<ClinicMetrics> {
+/**
+ * Wrapped in `cache` because the overview now reads these figures from two
+ * places — the tile strip and the risk chart, which stream into different
+ * columns and so cannot share one `await`. Without it that is two identical
+ * sets of four queries per page load; with it, one.
+ */
+export const clinicMetrics = cache(async function clinicMetrics(): Promise<ClinicMetrics> {
   /**
    * Every patient with their most recent *completed* assessment.
    *
@@ -67,4 +75,4 @@ export async function clinicMetrics(): Promise<ClinicMetrics> {
     distribution: riskDistribution(risks),
     assessedPatientCount: risks.filter((r) => r.riskBand !== null).length,
   };
-}
+});

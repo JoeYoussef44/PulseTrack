@@ -7,6 +7,7 @@ import {
   UPLOAD_WINDOWS,
   completionRate,
   formatRate,
+  higherRiskCount,
   parseUploadWindow,
   riskDistribution,
 } from "@/lib/dashboard/metrics";
@@ -164,6 +165,55 @@ function labRow(
     refHigh,
   };
 }
+
+describe("higherRiskCount", () => {
+  it("counts only the top two bands", () => {
+    const segments = riskDistribution([
+      { riskBand: "Low risk" },
+      { riskBand: "Moderate risk" },
+      { riskBand: "High risk" },
+      { riskBand: "Very high risk" },
+      { riskBand: "Very high risk" },
+    ]);
+
+    expect(higherRiskCount(segments)).toBe(3);
+  });
+
+  it("never counts the unassessed as higher risk", () => {
+    // The dangerous confusion: "no assessment" is missing information, not a
+    // good result and not a bad one. Counting it either way would be a claim
+    // the data does not support.
+    const segments = riskDistribution([
+      { riskBand: null },
+      { riskBand: null },
+      { riskBand: "Low risk" },
+    ]);
+
+    expect(higherRiskCount(segments)).toBe(0);
+  });
+
+  it("is zero for an empty register", () => {
+    expect(higherRiskCount(riskDistribution([]))).toBe(0);
+  });
+
+  it("agrees with the chart it sits beside", () => {
+    // The tile and the distribution read from one source precisely so they
+    // cannot disagree. This is that promise, asserted.
+    const patients = [
+      { riskBand: "High risk" },
+      { riskBand: "High risk" },
+      { riskBand: "Very high risk" },
+      { riskBand: "Low risk" },
+      { riskBand: null },
+    ];
+    const segments = riskDistribution(patients);
+    const fromChart = segments
+      .filter((s) => s.label === "High risk" || s.label === "Very high risk")
+      .reduce((n, s) => n + s.count, 0);
+
+    expect(higherRiskCount(segments)).toBe(fromChart);
+  });
+});
 
 describe("toLabSeries", () => {
   it("sorts points chronologically regardless of query order", () => {

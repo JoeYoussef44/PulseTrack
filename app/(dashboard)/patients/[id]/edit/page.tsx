@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PatientForm } from "@/components/patients/patient-form";
-import { Card, CardHeader } from "@/components/ui";
+import { Card, CardHeader, PageHeader } from "@/components/ui";
 import { updatePatient } from "@/lib/actions/patients";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -29,17 +29,17 @@ export default async function EditPatientPage({
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link
-          href={`/patients/${patient.id}`}
-          className="text-xs text-muted hover:text-ink"
-        >
-          ← {patient.fullName}
-        </Link>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          Edit patient
-        </h1>
-      </div>
+      <PageHeader
+        title="Edit patient"
+        eyebrow={
+          <Link
+            href={`/patients/${patient.id}`}
+            className="text-xs text-muted hover:text-ink"
+          >
+            ← {patient.fullName}
+          </Link>
+        }
+      />
 
       <Card>
         <CardHeader title="Patient details" />

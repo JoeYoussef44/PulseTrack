@@ -14,7 +14,13 @@ function cx(...parts: Array<string | false | null | undefined>): string {
 
 /* -------------------------------------------------------------- Button --- */
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost"
+  /** For the navigation rail, which is the one dark surface in the app. */
+  | "ghost-dark";
 
 const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
@@ -25,6 +31,7 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
     "border border-rule-strong bg-surface text-ink hover:bg-subtle",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-ink-2 hover:bg-subtle",
+  "ghost-dark": "text-deep-ink hover:bg-deep-2 hover:text-white",
 };
 
 export function Button({
@@ -106,6 +113,57 @@ export function Select({
         className,
       )}
     />
+  );
+}
+
+/* ---------------------------------------------------------- PageHeader --- */
+
+/**
+ * The top line of every page: what this is, and the one thing you do here.
+ *
+ * Before this existed each page invented its own header, and the primary
+ * action ended up wherever that page happened to put it — "Add patient" beside
+ * the title, "Import" halfway down a card, "Send assessment" inside a third
+ * card's header. One slot in one place means a page can be read at a glance
+ * without hunting for its verb.
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  badge,
+  action,
+}: {
+  /** A back link or breadcrumb, above the title. */
+  eyebrow?: ReactNode;
+  title: string;
+  description?: string;
+  /** Sits with the title — status about the thing, not an action on it. */
+  badge?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-rule pb-5">
+      {eyebrow}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-semibold tracking-tight text-ink">
+              {title}
+            </h1>
+            {badge}
+          </div>
+          {description ? (
+            <p className="text-sm text-muted">{description}</p>
+          ) : null}
+        </div>
+        {action ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {action}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
