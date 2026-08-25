@@ -8,6 +8,171 @@ reconstruct it from diffs.
 
 ---
 
+## Session 5 — 2026-08-25 (Tue) — deployed, and the checks only a live URL can settle
+
+**B2 is cleared. Tier 1 and Tier 2 are complete, deployed and verified against
+the live URL.** Five merged PRs (#21–#25). The app is at
+https://pulse-track-joe.vercel.app.
+
+Four pieces of work: the Tier 2 explainer, the deployment pipeline, the live
+verification pass, and the ugly CSV. Each is below, with what it got wrong first.
+
+### The Tier 2 explainer (PR #21)
+
+`.docs/04-tier2-fhir-integration.html` and a 15-page PDF, in the same design
+system as `02-project-overview.html` and the Tier 1 checklist, so the three read
+as one set rather than three separate documents. It leads with the ownership
+finding — quoting the probe output showing five other candidates holding
+`MRN-1001` — then the pagination traps, the idempotency guarantees with their
+measurements, the transient-versus-terminal failure policy with the timings that
+prove which is which, and the performance findings. It closes with what the
+integration deliberately does not do, each limit with its cost stated.
+
+**Writing it out found four wrong numbers**, which is the argument for writing
+these documents at all:
+
+- *"a seed import is ~15 requests per patient"* appeared in four places. It is
+  **three** per patient — one search plus two pages — and 15 for all five.
+- *"36 observations across three pages"* — it is **two** pages, 20 + 16.
+- A claim that a single-match MRN collision *"was true earlier in the week"* was
+  speculation written as fact. Removed.
+- The masthead said the API guide gets **four** things wrong. Three are the
+  guide's; the fourth finding is ours. Corrected, and that section relabelled.
+
+**Four layout defects came from measuring the rendered page**, none of them
+visible in the markup: a label overflowing its box by 22 units, two labels
+overlapping, an eyebrow rendering on top of the box beneath it, and a three-card
+grid wrapping to two columns at A4 and leaving the parent's rule colour showing
+through the unfilled cell as a bare grey block.
+
+The overlap is the instructive one. My first checker tested text-against-box and
+reported clean; the collision was text-against-*text*, which it could not see.
+**A check that passes tells you only about the thing it checks.** The screenshot
+found it, and only then was a second checker written for the class.
+
+One defect matters only for a PDF: the transcript blocks use `overflow-x: auto`,
+which scrolls on screen. **A printed page has no scrollbar**, so those lines were
+being silently cut off. Reflowed to fit the printable column, with print CSS
+wrapping as a backstop.
+
+### Deployment and CI/CD (PRs #22–#24)
+
+Joe cleared the Vercel account and asked, reasonably: *isn't connecting the repo
+enough?* Largely yes — the git integration gives push-to-deploy, a production
+branch, and a preview URL per branch with no configuration at all. Two things it
+does not give:
+
+- **It never runs the test suite.** Vercel runs `next build`. All 264 tests can
+  fail and it deploys happily. That gap is the only reason GitHub Actions was
+  added — and there was no `.github` directory at all before this.
+- **It does not run migrations.** `next build` alone would leave the first future
+  migration unapplied: a deploy that succeeds and an app that 500s on a missing
+  column.
+
+`main` → Production, `dev` → Preview, work flows **feature → dev → main**, and
+`CLAUDE.md` was updated to match.
+
+**CI failed on its own first pull request**, which is the best possible
+advertisement for it:
+
+```
+app/layout.tsx(28,50): error TS2304: Cannot find name 'LayoutProps'
+```
+
+Next 16 generates its route and layout helper types into `.next/types` during
+`next dev` and `next build`. Anyone who has run the dev server has them on disk;
+a fresh checkout does not. `tsc --noEmit` had been passing locally for weeks and
+would have failed for any evaluator who cloned the repo and typechecked it.
+Nothing was wrong with the code — **the check had simply never run anywhere
+clean, because until this PR there was nowhere clean to run it.**
+
+Fixed with `next typegen`, wired into a new `npm run typecheck` that CI calls
+rather than into the workflow alone: a separate CI incantation is precisely how
+local and CI drift apart. Reproduced before fixing — deleting `.next/types`
+reproduced the exact error locally.
+
+### Where I over-delivered, and Joe said so
+
+Asked for *"a simple commit like a commented line"* to test the pipeline, I built
+a deployment badge and browser-tested it at two viewports. Joe pointed out the
+delay, fairly. The work is sound and genuinely useful — the two URLs are
+otherwise indistinguishable — but it was not what was asked for, and "simple" was
+explicit in the request. Recorded because the pattern is worth watching:
+**scope discipline is part of doing the task, not separate from it.**
+
+### The live verification pass
+
+Run against the deployed URL rather than inferred from local behaviour:
+
+| Check | Result |
+|---|---|
+| **FHIR import from the deployed URL** | 5/5, slowest **3418ms** of a 60000ms ceiling — closes Tier 2's DoD |
+| Idempotency in production | `unchanged=36` per patient; the re-run wrote nothing |
+| Secrets in the client bundle | 11 chunks, 595KB: **zero** hits for four different secrets |
+| Auth boundary | `/dashboard` signed out → 307 to `/login` |
+| Charts on a patient page | 3 charts, 36 points, chronological |
+| 375px and 1280px | zero overflow, no console or network errors |
+
+My probe lied once, in the familiar way:
+`document.querySelector('a[href^="/patients/"]')` matched **`/patients/new`** —
+the Add-patient link, which comes first in the DOM — and it reported a patient
+page with zero charts. Same shape as session 3's Sign-out button: a selector
+loose enough to match something adjacent and plausible.
+
+**Two things remain unproven on the live URL** and are recorded as such: the Neon
+cold start (every measurement was taken against a warm database) and a real
+assessment email (untested deliberately, because two patient records carry real
+inboxes).
+
+### The ugly CSV (PR #25)
+
+The brief promises to test with *"a deliberately messy file."* It did not exist,
+and was the highest-value untested item on the checklist.
+
+29 rows, each targeting one named rule: 11 import, 14 are rejected for fourteen
+distinct reasons, 4 land in the third state. Hostile before parsing begins — a
+UTF-8 BOM, CRLF endings, blank lines mid-file, a trailing newline, one ragged
+short row and one ragged long row. Written as **bytes** rather than text, because
+the BOM and the CRLFs would not survive an editor.
+
+Verifying it row by row against `classifyRows` found the failure mode the first
+draft missed: **a row already on file with a *changed* value** — decision
+D-CSV-2's entire point, and the file did not exercise it. Added as line 32.
+
+**Then Joe asked whether I had actually imported it. I had not.** I had tested
+the classifier, which is a different claim — and exactly the conflation that let
+the duplicate-MRN crash survive session 3. Imported through the live UI: 29 rows
+read, **11 / 14 / 4**, matching the classifier prediction exactly, in 1.6s, with
+the file's own line numbers correctly skipping the blank lines.
+
+The 11 rows and their upload record were then deleted (D-QA-2) — after first
+confirming **none had been pushed to the national platform**, where a write
+cannot be undone. Had any been pushed, deleting locally would have orphaned a
+remote record permanently, so the cleanup aborts rather than guesses.
+
+### A correction carried for two sessions
+
+`state.md` said the empty and loading states had not been built. **That was
+wrong.** `EmptyState` is used in seven places, and loading states use React
+Suspense with skeleton fallbacks in four, plus a route-level `loading.tsx`. The
+real gap is narrower and still open: **none of them has ever been seen**, because
+the database has always had data. The code existing and its presentation being
+correct are two separate claims, and only the first was ever checked — the same
+lesson as session 3, in a new place.
+
+### Left undone
+
+- **Two patient records carry real personal inboxes** (`MRN-444`, `MRN-3410`).
+  The brief says fabricated data only, and an evaluator clicking *Send
+  assessment* emails a real person. The one item that would actively count
+  against the submission.
+- **The Resend key is still unrotated.**
+- **The empty and loading states have still never been looked at.**
+- **The fresh-clone dry run** has still never been done.
+- **The cold start** has still never been observed succeeding end to end.
+
+---
+
 ## Session 4 — 2026-08-24 (Mon) — Tier 2, both directions, against the real server
 
 **Tier 2 is complete.** Two merged PRs (#19 push, #20 pull), test suite 188 →
