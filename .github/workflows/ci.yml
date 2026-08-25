@@ -1,0 +1,53 @@
+name: CI
+
+# Vercel deploys; this decides whether a branch deserves to be deployed.
+#
+# Runs on pull requests into dev and main, and on the branches themselves, so a
+# merge that breaks the suite is visible on the branch rather than only on the
+# PR that introduced it.
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: lint · types · tests
+    runs-on: ubuntu-latest
+
+    env:
+      # No test touches a database — the suite is entirely pure functions — but
+      # `lib/db.ts` throws at import time when DATABASE_URL is unset, and
+      # `prisma generate` reads the datasource from prisma.config.ts. These are
+      # unreachable placeholders that satisfy both without granting CI any
+      # access to a real database. No real credential belongs in this file.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+      DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` runs the postinstall hook, which generates the Prisma client
+      # into lib/generated/prisma. Everything below fails without it.
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test

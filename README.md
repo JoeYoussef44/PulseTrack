@@ -22,6 +22,7 @@ Built as a timed engineering challenge for **Capadev**.
 - [FHIR integration (Tier 2)](#fhir-integration-tier-2)
 - [Security](#security)
 - [Testing](#testing)
+- [Deployment and CI/CD](#deployment-and-cicd)
 - [Decisions and tradeoffs](#decisions-and-tradeoffs)
 - [What is and isn't built](#what-is-and-isnt-built)
 
@@ -649,6 +650,110 @@ reading the output:
 | Driving a headless browser at 375px | Three layout defects nobody had seen, because Recharts only draws client-side and no browser pass had ever been run: `/labs/upload` scrolled sideways (a `-mx-5` breakout inside a `Card` with no padding to cancel it), a risk-band label was truncated to `not survey…` **at every width**, and the nav clipped "National platform" on every authenticated page |
 
 ---
+
+## Deployment and CI/CD
+
+Two environments, two URLs, both deployed from git. Nothing is deployed by
+hand, which is the point: the URL an evaluator opens is built from a commit
+that is in the repository, not from whatever happened to be on a laptop.
+
+| Branch | Vercel environment | URL |
+|---|---|---|
+| `main` | Production | `https://<project>.vercel.app` |
+| `dev` | Preview | `https://<project>-git-dev-<scope>.vercel.app` |
+
+Work merges into `dev`, is checked on the preview URL, and `dev` merges into
+`main` when it is right. Every other branch also gets its own preview
+deployment, which is what makes a pull request reviewable as a running site
+rather than as a diff.
+
+### The two halves
+
+**CI — GitHub Actions** (`.github/workflows/ci.yml`) runs lint, typecheck and
+the test suite on every pull request into `dev` or `main`, and on the branches
+themselves. It touches no database: the suite is entirely pure functions, and
+the workflow's placeholder connection strings exist only because `lib/db.ts`
+throws at import when `DATABASE_URL` is unset.
+
+**CD — Vercel's git integration** builds and deploys every push. The build
+command lives in `vercel.json` rather than in the dashboard, so it is
+version-controlled and reviewable:
+
+```json
+"buildCommand": "prisma migrate deploy && next build"
+```
+
+`prisma migrate deploy` applies pending migrations and never generates new
+ones — `migrate dev` is a local-only command and would be wrong here.
+
+### First-time setup
+
+```bash
+npm i -g vercel        # or use npx
+vercel login
+vercel link            # choose the existing project, or create it
+```
+
+Then push the environment variables. Ten variables across two environments is
+sixty-odd fields to retype, and a mistyped connection string fails at runtime
+rather than at paste time:
+
+```bash
+bash scripts/vercel-env.sh
+```
+
+It reads `.env`, never prints a value, and can be re-run to update. Two
+variables are deliberately excluded:
+
+- **`APP_BASE_URL`** is set for **production only**, once the URL exists. A
+  preview carrying a production `APP_BASE_URL` would email assessment links
+  that leave the preview entirely — the clinician tests on `dev` and the
+  patient lands on the live site. Left unset, `lib/actions/assessments.ts`
+  falls back to `VERCEL_URL`, so each preview links to itself.
+- **`SEED_CLINICIAN_*`** are never needed by a build. The seed runs from a
+  developer machine against `DATABASE_URL`. Every secret Vercel does not hold
+  is one that cannot leak from it.
+
+Deploy, then set the production base URL now that you know it:
+
+```bash
+vercel --prod
+vercel env add APP_BASE_URL production     # https://<project>.vercel.app
+vercel --prod                              # env vars are read at build time
+```
+
+That last redeploy is not optional. Environment variables are baked in at
+build time, so an existing deployment never sees a variable added after it.
+
+### One consequence of sharing a database
+
+`dev` and `main` point at the same Neon database. That is a deliberate
+trade — the preview URL shows the same demo data as production, and there is
+nothing extra to seed — but it has a consequence that has to be respected:
+
+> **Migrations must be additive while the two share a database.** `dev`
+> deploys before `main`, so `dev` applies a migration while production is
+> still running the previous code. Adding a nullable column or a table is
+> safe. Dropping or renaming one breaks production the moment `dev` deploys,
+> and the failure appears on the URL nobody was testing.
+
+The safe pattern is expand-then-contract: add the new column, ship code that
+writes both, and only remove the old one in a later release once production no
+longer references it. Splitting the environments onto separate Neon branches
+removes the constraint entirely and is what a longer-lived project should do.
+
+### Notes for this deployment
+
+- **Region.** Neon is in AWS `us-east-1`; Vercel's default `iad1` is the same
+  place. Check it in the project settings if latency looks wrong — a function
+  in Europe talking to a database in Virginia adds a round trip to every query.
+- **Neon cold starts.** The free tier suspends compute after a few minutes
+  idle and the next connection wakes it, measured at ~3s. `lib/db.ts` sets a
+  15s connection timeout for exactly this reason. An evaluator opening the
+  link days later hits it on their very first request.
+- **Function duration.** The CSV import and the FHIR routes declare
+  `maxDuration = 60`, the Hobby ceiling. Both are batched so that no single
+  invocation approaches it.
 
 ## Decisions and tradeoffs
 
