@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { Wordmark } from "@/components/brand/mark";
 import { BarNav, RailNav } from "@/components/shell/nav";
 import { logout } from "@/lib/actions/auth";
 import { requireClinician } from "@/lib/auth/session";
@@ -58,15 +59,9 @@ export default async function DashboardLayout({
       {/* ------------------------------------------------ rail, lg and up -- */}
       <aside className="hidden shrink-0 bg-deep lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-58 lg:flex-col">
         <div className="flex flex-col gap-1 px-5 pt-6 pb-5">
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold tracking-tight text-white"
-          >
-            PulseTrack
+          <Link href="/dashboard" className="text-white">
+            <Wordmark />
           </Link>
-          <p className="font-mono text-[10px] tracking-[0.14em] text-deep-ink/70 uppercase">
-            Diabetes clinic
-          </p>
           {deployment ? (
             <p className="mt-2 font-mono text-[10px] tracking-[0.08em] text-deep-ink">
               {deployment}
@@ -100,11 +95,8 @@ export default async function DashboardLayout({
       {/* -------------------------------------------------- bar, below lg -- */}
       <header className="border-b border-rule bg-surface lg:hidden">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold tracking-tight text-ink"
-          >
-            PulseTrack
+          <Link href="/dashboard" className="text-ink">
+            <Wordmark eyebrow={false} />
           </Link>
 
           {deployment ? <Badge tone="accent">{deployment}</Badge> : null}
