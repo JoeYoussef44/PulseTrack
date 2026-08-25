@@ -27,6 +27,17 @@
   --color-accent-hover: #084a58;
   --color-accent-soft: #e0eef1;
 
+  /* The navigation rail. Same hue family as the accent so the frame reads as
+     one system, dark enough for white text at AAA. Clinical products put
+     navigation on a dark rail and spend colour on state, not on chrome. */
+  --color-deep: #10312f;
+  --color-deep-2: #17403c;
+  --color-deep-ink: #cfe0da;
+
+  /* Chart gridlines. Previously the same value as --color-rule, which is what
+     made a chart frame read as another table border. */
+  --color-grid: #e9eeec;
+
   /* Risk bands, from questionnaire-dsma8.json */
   --color-band-low: #2f7d53;
   --color-band-low-soft: #e3f0e8;

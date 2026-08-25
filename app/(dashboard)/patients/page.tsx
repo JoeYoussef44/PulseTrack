@@ -2,9 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { Badge, Button, Card, EmptyState, Input, Skeleton } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  PageHeader,
+  Skeleton,
+} from "@/components/ui";
+import { bandTone } from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { AssessmentStatus } from "@/lib/generated/prisma/enums";
 import { toIsoDate } from "@/lib/validation/patient";
 
 export const metadata: Metadata = { title: "Patients" };
@@ -42,6 +52,19 @@ async function PatientTable({ query }: { query: string }) {
       email: true,
       fhirOwnership: true,
       _count: { select: { labResults: true, assessments: true } },
+      // The same rule the dashboard counts by (D-DASH-3): a patient's band is
+      // their most recent *completed* assessment, not their most recent one.
+      assessments: {
+        where: { status: AssessmentStatus.COMPLETED },
+        orderBy: { completedAt: "desc" },
+        take: 1,
+        select: { riskBand: true, completedAt: true },
+      },
+      labResults: {
+        orderBy: { collectedDate: "desc" },
+        take: 1,
+        select: { collectedDate: true },
+      },
     },
   });
 
@@ -73,60 +96,87 @@ async function PatientTable({ query }: { query: string }) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[680px] text-sm">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
+          {/* Sticky, because a register is scrolled and a column you cannot
+              name is a column you cannot read. */}
           <tr className="border-b border-rule text-left">
-            <th className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
-              Name
-            </th>
-            <th className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
-              MRN
-            </th>
-            <th className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
-              Date of birth
-            </th>
-            <th className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
-              Sex
-            </th>
-            <th className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
-              Records
-            </th>
+            {[
+              "Name",
+              "MRN",
+              "Date of birth",
+              "Sex",
+              "Latest band",
+              "Last result",
+              "Records",
+            ].map((h) => (
+              <th
+                key={h}
+                scope="col"
+                className="sticky top-0 z-10 bg-surface px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {patients.map((p) => (
-            <tr
-              key={p.id}
-              className="border-b border-rule last:border-0 hover:bg-subtle"
-            >
-              <td className="px-5 py-3">
-                <Link
-                  href={`/patients/${p.id}`}
-                  className="font-medium text-ink hover:text-accent"
-                >
-                  {p.fullName}
-                </Link>
-                {p.fhirOwnership === "EXTERNAL_SEED" ? (
-                  <span className="ml-2">
-                    <Badge tone="accent">National platform</Badge>
-                  </span>
-                ) : null}
-                {p.email ? (
-                  <div className="text-xs text-muted">{p.email}</div>
-                ) : null}
-              </td>
-              <td className="tabular px-5 py-3 font-mono text-ink-2">{p.mrn}</td>
-              <td className="tabular px-5 py-3 text-ink-2">
-                {toIsoDate(p.dateOfBirth)}
-              </td>
-              <td className="px-5 py-3 text-ink-2">
-                {SEX_LABEL[p.sex] ?? p.sex}
-              </td>
-              <td className="tabular px-5 py-3 text-xs text-muted">
-                {p._count.labResults} labs · {p._count.assessments} assessments
-              </td>
-            </tr>
-          ))}
+          {patients.map((p) => {
+            const band = p.assessments[0]?.riskBand ?? null;
+            const lastResult = p.labResults[0]?.collectedDate ?? null;
+
+            return (
+              <tr
+                key={p.id}
+                className="border-b border-rule last:border-0 hover:bg-subtle"
+              >
+                <td className="px-5 py-3">
+                  <Link
+                    href={`/patients/${p.id}`}
+                    className="font-medium text-ink hover:text-accent"
+                  >
+                    {p.fullName}
+                  </Link>
+                  {p.fhirOwnership === "EXTERNAL_SEED" ? (
+                    <span className="ml-2">
+                      <Badge tone="accent">National platform</Badge>
+                    </span>
+                  ) : null}
+                  {p.email ? (
+                    <div className="text-xs text-muted">{p.email}</div>
+                  ) : null}
+                </td>
+                <td className="tabular px-5 py-3 font-mono whitespace-nowrap text-ink-2">
+                  {p.mrn}
+                </td>
+                <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
+                  {toIsoDate(p.dateOfBirth)}
+                </td>
+                <td className="px-5 py-3 text-ink-2">
+                  {SEX_LABEL[p.sex] ?? p.sex}
+                </td>
+                {/* Always the written band, never colour alone — the same rule
+                    that governs the distribution chart. */}
+                <td className="px-5 py-3">
+                  {band ? (
+                    <Badge tone={bandTone(band)}>{band}</Badge>
+                  ) : (
+                    <span className="text-xs text-muted">Not assessed</span>
+                  )}
+                </td>
+                <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
+                  {lastResult ? (
+                    toIsoDate(lastResult)
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
+                <td className="tabular px-5 py-3 text-xs whitespace-nowrap text-muted">
+                  {p._count.labResults} labs · {p._count.assessments} assessments
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -154,34 +204,33 @@ export default async function PatientsPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-ink">
-            Patients
-          </h1>
-          <p className="text-sm text-muted">
-            Search by name, MRN or email address.
-          </p>
-        </div>
-
-        <Link href="/patients/new">
-          <Button>Add patient</Button>
-        </Link>
-      </div>
-
-      <form method="get" className="flex gap-2">
-        <Input
-          type="search"
-          name="q"
-          defaultValue={q}
-          placeholder="Search patients…"
-          aria-label="Search patients"
-          className="max-w-sm"
-        />
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+      <PageHeader
+        title="Patients"
+        description="Search by name, MRN or email address."
+        action={
+          <>
+            {/* Search sits with the action rather than on its own line: it is
+                the other thing you came here to do, and three stacked blocks
+                of chrome above a table is two too many. */}
+            <form method="get" className="flex w-full gap-2 sm:w-auto">
+              <Input
+                type="search"
+                name="q"
+                defaultValue={q}
+                placeholder="Search patients…"
+                aria-label="Search patients"
+                className="min-w-0 sm:w-64"
+              />
+              <Button type="submit" variant="secondary">
+                Search
+              </Button>
+            </form>
+            <Link href="/patients/new">
+              <Button>Add patient</Button>
+            </Link>
+          </>
+        }
+      />
 
       <Card>
         {/* key forces a fresh Suspense boundary per query, so the skeleton

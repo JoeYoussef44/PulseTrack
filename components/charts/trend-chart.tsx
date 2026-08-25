@@ -81,9 +81,13 @@ export function TrendChart({
           margin={{ top: 12, right: 44, bottom: 4, left: 4 }}
         >
           {/* Hairline, solid, one step off the surface. Never dashed: dashing
-              reads as "threshold" or "projection" when it is only a grid. */}
+              reads as "threshold" or "projection" when it is only a grid.
+
+              Its own token, a step lighter than --color-rule: the chart now
+              sits in a card beside three others, and a gridline drawn in the
+              same value as the card borders made the plot read as a table. */}
           <CartesianGrid
-            stroke="var(--color-rule)"
+            stroke="var(--color-grid)"
             strokeWidth={1}
             vertical={false}
           />
