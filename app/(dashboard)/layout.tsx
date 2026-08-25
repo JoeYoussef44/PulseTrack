@@ -3,7 +3,32 @@ import Link from "next/link";
 
 import { logout } from "@/lib/actions/auth";
 import { requireClinician } from "@/lib/auth/session";
-import { Button } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+
+/**
+ * Which deployment is serving this page, shown only when it is not production.
+ *
+ * Two URLs run this app and they look identical: the production domain off
+ * `main`, and the preview off `dev`. Without a marker the only way to tell
+ * which one you are testing is to read the address bar carefully, and the one
+ * mistake that costs real time is fixing something on the wrong one.
+ *
+ * The commit is included because "is my change deployed yet?" is otherwise
+ * answered by guessing. `VERCEL_GIT_COMMIT_SHA` is what is actually running,
+ * not what was last pushed.
+ *
+ * Returns null in production and null locally, so a clinician or an evaluator
+ * on the live URL never sees it.
+ */
+function deploymentLabel(): string | null {
+  const env = process.env.VERCEL_ENV;
+  if (!env || env === "production") return null;
+
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+  const name = env === "preview" ? "Preview" : env;
+
+  return sha ? `${name} · ${sha}` : name;
+}
 
 const NAV = [
   { href: "/dashboard", label: "Clinic" },
@@ -23,6 +48,7 @@ export default async function DashboardLayout({
   children: ReactNode;
 }) {
   const clinician = await requireClinician();
+  const deployment = deploymentLabel();
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -34,6 +60,8 @@ export default async function DashboardLayout({
           >
             PulseTrack
           </Link>
+
+          {deployment ? <Badge tone="accent">{deployment}</Badge> : null}
 
           <nav className="order-3 -mx-1 flex w-full flex-wrap gap-1 sm:order-none sm:mx-0 sm:w-auto sm:flex-nowrap">
             {NAV.map((item) => (
