@@ -109,6 +109,57 @@ export function Select({
   );
 }
 
+/* ---------------------------------------------------------- PageHeader --- */
+
+/**
+ * The top line of every page: what this is, and the one thing you do here.
+ *
+ * Before this existed each page invented its own header, and the primary
+ * action ended up wherever that page happened to put it — "Add patient" beside
+ * the title, "Import" halfway down a card, "Send assessment" inside a third
+ * card's header. One slot in one place means a page can be read at a glance
+ * without hunting for its verb.
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  badge,
+  action,
+}: {
+  /** A back link or breadcrumb, above the title. */
+  eyebrow?: ReactNode;
+  title: string;
+  description?: string;
+  /** Sits with the title — status about the thing, not an action on it. */
+  badge?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-b border-rule pb-5">
+      {eyebrow}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-semibold tracking-tight text-ink">
+              {title}
+            </h1>
+            {badge}
+          </div>
+          {description ? (
+            <p className="text-sm text-muted">{description}</p>
+          ) : null}
+        </div>
+        {action ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {action}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- Card --- */
 
 export function Card({ className, ...props }: ComponentProps<"div">) {

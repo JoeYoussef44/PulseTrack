@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { BarNav, RailNav } from "@/components/shell/nav";
 import { logout } from "@/lib/actions/auth";
 import { requireClinician } from "@/lib/auth/session";
 import { Badge, Button } from "@/components/ui";
@@ -30,17 +31,18 @@ function deploymentLabel(): string | null {
   return sha ? `${name} · ${sha}` : name;
 }
 
-const NAV = [
-  { href: "/dashboard", label: "Clinic" },
-  { href: "/patients", label: "Patients" },
-  { href: "/labs/upload", label: "Lab import" },
-  { href: "/integrations/fhir", label: "National platform" },
-];
-
 /**
  * Second of the three authorisation layers. Middleware already checked the
  * cookie at the edge; this re-checks server-side on every render, so a
  * misconfigured matcher cannot expose a page. Mutations check again.
+ *
+ * The frame is the one every clinical product uses: a fixed rail for
+ * navigation and a work area that takes the rest of the display. The previous
+ * shell centred 1104px of content regardless of the monitor, which spent 408px
+ * a side on empty margin at 1920px and left the register, the charts and the
+ * trends with nowhere to sit beside each other. Below `lg` the rail becomes the
+ * horizontal bar it replaced, because a 232px rail on a 375px phone is most of
+ * the screen.
  */
 export default async function DashboardLayout({
   children,
@@ -49,11 +51,55 @@ export default async function DashboardLayout({
 }) {
   const clinician = await requireClinician();
   const deployment = deploymentLabel();
+  const who = clinician.name || clinician.email;
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="border-b border-rule bg-surface">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
+    <div className="flex min-h-screen flex-col lg:flex-row">
+      {/* ------------------------------------------------ rail, lg and up -- */}
+      <aside className="hidden shrink-0 bg-deep lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-58 lg:flex-col">
+        <div className="flex flex-col gap-1 px-5 pt-6 pb-5">
+          <Link
+            href="/dashboard"
+            className="text-sm font-semibold tracking-tight text-white"
+          >
+            PulseTrack
+          </Link>
+          <p className="font-mono text-[10px] tracking-[0.14em] text-deep-ink/70 uppercase">
+            Diabetes clinic
+          </p>
+          {deployment ? (
+            <p className="mt-2 font-mono text-[10px] tracking-[0.08em] text-deep-ink">
+              {deployment}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex-1 px-3">
+          <RailNav />
+        </div>
+
+        {/* The clinician sits at the foot of the rail, which is where every
+            product this one resembles puts it — and it frees the top right of
+            each page for that page's own action. */}
+        <div className="flex flex-col gap-2 border-t border-deep-2 px-5 py-4">
+          <p className="truncate text-xs text-deep-ink" title={who}>
+            {who}
+          </p>
+          <form action={logout}>
+            <Button
+              type="submit"
+              variant="ghost"
+              className="-mx-2 px-2 py-1 text-xs text-deep-ink hover:bg-deep-2 hover:text-white"
+            >
+              Sign out
+            </Button>
+          </form>
+        </div>
+      </aside>
+
+      {/* -------------------------------------------------- bar, below lg -- */}
+      <header className="border-b border-rule bg-surface lg:hidden">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6">
           <Link
             href="/dashboard"
             className="text-sm font-semibold tracking-tight text-ink"
@@ -63,22 +109,12 @@ export default async function DashboardLayout({
 
           {deployment ? <Badge tone="accent">{deployment}</Badge> : null}
 
-          <nav className="order-3 -mx-1 flex w-full flex-wrap gap-1 sm:order-none sm:mx-0 sm:w-auto sm:flex-nowrap">
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-1.5 text-sm whitespace-nowrap text-ink-2 hover:bg-subtle hover:text-ink"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="order-3 w-full sm:order-none sm:w-auto">
+            <BarNav />
+          </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden text-xs text-muted sm:inline">
-              {clinician.name || clinician.email}
-            </span>
+            <span className="hidden text-xs text-muted sm:inline">{who}</span>
             <form action={logout}>
               <Button type="submit" variant="ghost" className="px-3 py-1.5">
                 Sign out
@@ -88,9 +124,12 @@ export default async function DashboardLayout({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
-        {children}
-      </main>
+      {/* ---------------------------------------------------- work area --- */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

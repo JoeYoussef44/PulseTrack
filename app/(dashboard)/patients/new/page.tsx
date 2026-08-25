@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PatientForm } from "@/components/patients/patient-form";
-import { Card, CardHeader } from "@/components/ui";
+import { Card, CardHeader, PageHeader } from "@/components/ui";
 import { createPatient } from "@/lib/actions/patients";
 import { requireClinician } from "@/lib/auth/session";
 
@@ -13,14 +13,14 @@ export default async function NewPatientPage() {
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href="/patients" className="text-xs text-muted hover:text-ink">
-          ← Patients
-        </Link>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          Add patient
-        </h1>
-      </div>
+      <PageHeader
+        title="Add patient"
+        eyebrow={
+          <Link href="/patients" className="text-xs text-muted hover:text-ink">
+            ← Patients
+          </Link>
+        }
+      />
 
       <Card>
         <CardHeader
