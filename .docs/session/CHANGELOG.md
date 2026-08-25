@@ -8,6 +8,152 @@ reconstruct it from diffs.
 
 ---
 
+## Session 6 — 2026-08-25 (Tue, later) — the last real-data problem, the states nobody had seen, and a frame
+
+Three merged PRs of substance (#27, #29, plus the #25/#26/#28 backlog cleared),
+264 → 268 tests. **A2 is cleared**, the empty and loading states have finally
+been *looked at*, and the app has a clinical frame instead of a centred column.
+
+### The two real identities (A2)
+
+`MRN-444` and `MRN-3410` carried Joe's real name, inbox, mobile and date of
+birth. Both are now fabricated — Nour Chalhoub and Elias Mansour — with their
+assessment history intact.
+
+**Probed before changing anything**, which changed what the fix had to cover.
+Both records were `OWNED`/`SYNCED`, so the real **name and date of birth were
+sitting on a shared, publicly readable server**. D-FHIR-11 held: no `telecom`
+was ever pushed, so the email and phone had never left the machine. Both
+resources were re-pushed through `pushPatient`'s PUT path.
+
+One thing could not be undone and is recorded rather than glossed:
+`GET /Patient/819/_history/1` still returns `200` with the original name. That
+server disables DELETE, so the superseded version stays in its history. The
+*current* version — what any read, search or import returns — is clean, and
+that was verified against production by grepping the rendered patients page for
+six strings, not by assuming.
+
+Joe closed A1, the Resend key rotation, as no longer an issue. Recorded in §3
+rather than deleted, because "we decided not to" and "we forgot" look identical
+six months later.
+
+### The empty and loading states, at last
+
+Session 5 corrected the claim that they had not been built. This session closed
+what that correction left open: **they had never been seen.**
+
+Method: a scratch Neon database created with `CREATE DATABASE`, migrated, seeded
+with the clinician *only*, then a **production build** served against it.
+Skeletons held still with CDP throttling at 40 kbit/s and 400 ms latency.
+
+**Nine empty states, all reading as intentional** — each with a heading, an
+explanation of what will appear there, and where relevant the action that fills
+it. Plus the state nobody had thought about, one patient with no activity:
+`1 · 0 assessed · 1 not yet`, completion `—`, all bands zero.
+
+And one real defect, which is what the exercise was for. The FHIR route's
+`loading.tsx` drew **four figures in four columns**; its page has drawn **six in
+three** since the pull side landed in #20. The grid reflowed the moment content
+arrived — while the file's own comment said:
+
+> The skeleton mirrors the real layout ... so the page does not jump when the
+> content arrives.
+
+Measured before and after at 1280px: `cells 4→6, columns 4→3, rows 1→2` became
+`6→6, 3→3, 2→2`, with the grid settling 7px instead of reflowing. Fixed in #27,
+with the heading moved into one file imported by both page and loading state —
+writing the title out twice is what let them diverge, so the fix must not repeat
+it.
+
+### The frame (#29)
+
+Joe asked for a prettier UI that fills the space. The complaint was measurable,
+so it got measured first: the shell was `max-w-6xl` centred and rendered
+**1104px of content on every monitor** — 86% of 1280px, 77% of 1440, **57% of
+1920 with 408px of dead margin a side**.
+
+The useful part of the diagnosis was that "too narrow" was wrong. It was **one
+column**: widening alone would only have given the risk bars 1600px of empty
+track instead of 780px. A plan went out before any code — the measurements, what
+Epic's Storyboard, the NHS service manual and Carbon actually do, what stays,
+and a phasing with an explicit recommendation against the deadline.
+
+Built: a fixed 232px rail on a new `--color-deep`; a fluid work area to 1600px;
+a `PageHeader` primitive; a sticky patient identity banner with the four charts
+in one grid and the record tables abreast; four equal dashboard tiles beside the
+distribution and imports; **latest band** and **last result** in the register.
+
+| | Before | After |
+|---|---|---|
+| Content at 1920 | 1104px (57%) | fluid to 1600px |
+| Patient page, 3 series | 1631px | **1366px**, four charts at once |
+| Overflow at 375px | 0 | **0**, five pages |
+
+Merged into `dev` as #29 and promoted by Joe as #30 while this entry was being
+written — so it is **live**, and re-verified there: five pages at 1920 and
+375px, zero horizontal overflow, no console or network errors.
+
+The palette was deliberately not re-chosen. It is derived from
+`questionnaire-dsma8.json`, the reasoning is in `globals.css`, and trading a
+documented decision for a taste decision the day before submission is a
+downgrade. Four tokens added, none replaced.
+
+### Three defects the dev server hid
+
+All three survived every development screenshot and appeared the moment the app
+was built and served for real. This is now **D-QA-3**.
+
+- **283px of horizontal overflow at 375px.** A CSS grid track sized `auto` takes
+  its minimum from the item's *min-content*, so a card holding a 520px table
+  dragged the column past the viewport. A column flexbox does not do this, which
+  is exactly why wrapping cards in a grid regressed a layout that had been clean
+  since #13. Tailwind's numbered `grid-cols-*` are `minmax(0, 1fr)` and cannot.
+- **Sign out was nearly invisible in the rail.** `text-deep-ink` was passed
+  alongside the ghost variant's `text-ink-2`, and Tailwind resolves conflicting
+  utilities by their order **in the generated stylesheet**, not in `class`. A
+  coin toss, and it lost. In development the Next dev-tools badge sits in the
+  bottom-left corner, precisely on top of that button, so every screenshot
+  showed it covered rather than broken.
+- **The empty dashboard left a dead half-row.** With no patients the
+  distribution renders nothing, and a fixed two-column grid stranded the imports
+  card beside blank space — "looks broken rather than intentional", which is the
+  brief's own phrase for the thing this must not be.
+
+### The probe that measured the wrong database
+
+Worth recording because it is §6b of `state.md` recurring in a new place, and
+because it was nearly believed.
+
+The first empty-database run reported clean, intentional empty states. It was
+reporting on the **real** database: the previous server still held port 3000,
+`next start` had died with `EADDRINUSE`, and the probe cheerfully talked to the
+server that was already there. The output looked exactly like a pass.
+
+It was caught by reading the **server log** rather than the probe output — and
+then noticing the dashboard "empty state" was showing 10 patients. `TaskStop`
+had killed the shell, not the node process; only an explicit port check does
+that. A green probe that never reached the thing under test proves nothing, and
+this is the third session in which that sentence has had to be written.
+
+### One thing this session could not check itself
+
+**Preview deployments are behind Vercel deployment protection.** A preview URL
+answers `200` and then redirects to a Vercel SSO login, so it cannot be driven
+by `curl` or a headless browser — only by a browser signed in to the account.
+Verification therefore ran against a local production build and, after the
+promotion, against production itself. Worth knowing before planning any check
+around a preview URL: **it is a human step.**
+
+### Left undone
+
+- **The fresh-clone dry run**, still never done.
+- **The cold start**, still never observed end to end.
+- **A3, the demo figures** — 10/16/190 against a documented 3/8/10. Cosmetic.
+- Phases D and E of the interface plan (density/tables, chart reference bands).
+  F is cut.
+
+---
+
 ## Session 5 — 2026-08-25 (Tue) — deployed, and the checks only a live URL can settle
 
 **B2 is cleared. Tier 1 and Tier 2 are complete, deployed and verified against
