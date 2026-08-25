@@ -86,12 +86,12 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
           <table className="w-full min-w-[34rem] text-sm">
             <thead>
               <tr className="border-b border-rule text-left">
-                {["File", "Imported", "Rejected", "Already on file", "When"].map(
+                {["File", "Imported", "Rejected", "On file", "When (UTC)"].map(
                   (h) => (
                     <th
                       key={h}
                       scope="col"
-                      className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] whitespace-nowrap text-muted uppercase"
+                      className="px-4 py-3 font-mono text-[10px] tracking-[0.1em] whitespace-nowrap text-muted uppercase"
                     >
                       {h}
                     </th>
@@ -106,15 +106,15 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
                       truncate rather than wrap into three lines. The full name
                       stays available on hover and to a screen reader. */}
                   <td
-                    className="max-w-[16rem] truncate px-5 py-3 text-ink"
+                    className="max-w-[14rem] truncate px-4 py-3 text-ink"
                     title={upload.filename}
                   >
                     {upload.filename}
                   </td>
-                  <td className="tabular px-5 py-3 text-band-low">
+                  <td className="tabular px-4 py-3 text-band-low">
                     {upload.acceptedCount}
                   </td>
-                  <td className="tabular px-5 py-3">
+                  <td className="tabular px-4 py-3">
                     {upload.rejectedCount > 0 ? (
                       <span className="text-band-critical">
                         {upload.rejectedCount}
@@ -123,12 +123,13 @@ export async function RecentUploads({ window }: { window: UploadWindow }) {
                       <span className="text-ink-2">0</span>
                     )}
                   </td>
-                  <td className="tabular px-5 py-3 text-ink-2">
+                  <td className="tabular px-4 py-3 text-ink-2">
                     {upload.skippedDuplicateCount}
                   </td>
-                  <td className="px-5 py-3 whitespace-nowrap text-muted">
-                    {upload.uploadedAt.toISOString().slice(0, 16).replace("T", " ")}{" "}
-                    UTC
+                  {/* The zone moved into the column header: repeating "UTC"
+                      on every row cost more width than it bought clarity. */}
+                  <td className="tabular px-4 py-3 whitespace-nowrap text-muted">
+                    {upload.uploadedAt.toISOString().slice(0, 16).replace("T", " ")}
                   </td>
                 </tr>
               ))}

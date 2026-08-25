@@ -14,7 +14,13 @@ function cx(...parts: Array<string | false | null | undefined>): string {
 
 /* -------------------------------------------------------------- Button --- */
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost"
+  /** For the navigation rail, which is the one dark surface in the app. */
+  | "ghost-dark";
 
 const BUTTON_BASE =
   "inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
@@ -25,6 +31,7 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
     "border border-rule-strong bg-surface text-ink hover:bg-subtle",
   danger: "bg-danger text-white hover:opacity-90",
   ghost: "text-ink-2 hover:bg-subtle",
+  "ghost-dark": "text-deep-ink hover:bg-deep-2 hover:text-white",
 };
 
 export function Button({

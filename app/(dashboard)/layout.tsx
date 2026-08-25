@@ -88,8 +88,8 @@ export default async function DashboardLayout({
           <form action={logout}>
             <Button
               type="submit"
-              variant="ghost"
-              className="-mx-2 px-2 py-1 text-xs text-deep-ink hover:bg-deep-2 hover:text-white"
+              variant="ghost-dark"
+              className="-mx-2 px-2 py-1 text-xs"
             >
               Sign out
             </Button>

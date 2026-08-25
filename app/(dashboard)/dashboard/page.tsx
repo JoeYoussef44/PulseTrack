@@ -192,8 +192,16 @@ export default async function ClinicDashboardPage({
       </Suspense>
 
       {/* The register's shape beside the register's traffic. Both are read at
-          the same moment and neither fills a wide screen alone. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+          the same moment and neither fills a wide screen alone.
+
+          `auto-fit` rather than a fixed pair of columns, because on a clinic
+          with no patients the distribution renders nothing and a fixed grid
+          would leave the imports card stranded in half a row with dead space
+          beside it — which is exactly the "looks broken rather than
+          intentional" the brief calls out. An empty track collapses, so the
+          survivor takes the width. `min(30rem, 100%)` is what keeps the track
+          from being wider than a phone.  */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(30rem,100%),1fr))] gap-6">
         <Suspense fallback={<RiskBandsSkeleton />}>
           <RiskBands />
         </Suspense>
