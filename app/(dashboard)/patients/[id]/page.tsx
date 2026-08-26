@@ -6,6 +6,7 @@ import { SendAssessment } from "@/components/assessments/send-assessment";
 import { LabTrends, ScoreTrend } from "@/components/charts/patient-trends";
 import { DeletePatient } from "@/components/patients/delete-patient";
 import { IdentityBanner } from "@/components/patients/identity-banner";
+import { TrajectorySummary } from "@/components/patients/trajectory-summary";
 import {
   Badge,
   Button,
@@ -14,6 +15,7 @@ import {
   EmptyState,
   PageHeader,
 } from "@/components/ui";
+import { isAiConfigured } from "@/lib/ai/config";
 import { bandTone, displayStatus } from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -151,6 +153,13 @@ export default async function PatientDetailPage({
         <ScoreTrend points={scorePoints} />
         <LabTrends series={labSeries} />
       </div>
+
+      {/* The narrative sits between the charts and the records: after the
+          shapes a clinician reads first, before the rows they check against.
+          Whether the feature is configured is decided on the server — the key
+          never reaches the browser, and neither does the question of whether
+          there is one. */}
+      <TrajectorySummary patientId={patient.id} configured={isAiConfigured()} />
 
       {/* The two record tables side by side. Both keep their own
           horizontal scroll, so a narrow column never clips a column
