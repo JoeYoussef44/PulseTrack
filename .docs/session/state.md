@@ -1,8 +1,8 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-26**, session 7 (the sign-in page and the mark, the
-> user guide, and a sweep of the leftovers).
+> Last updated: **2026-08-26**, session 8 (Tier 3 — the grounded trajectory
+> summary, built, measured against a real provider, and live).
 
 ---
 
@@ -23,8 +23,11 @@ Session 7 rebuilt the **sign-in page** and gave the product a **mark and a real
 favicon** (§1f, live), wrote the **user guide** an evaluator can read before a
 walkthrough call (§1g), and swept the repo's scaffold leftovers.
 
-What remains before submitting is in §9. Nothing is blocked. **`main` is three
-commits behind `dev`** — #34 was merged to `dev` only.
+**Session 8 built Tier 3** — a grounded patient trajectory summary (§1h) —
+which is **merged to `main` and live**. All three tiers are now complete.
+
+What remains before submitting is in §9. Nothing is blocked. `dev` and `main`
+are level on everything functional; `dev` carries the session records.
 
 | Phase | Status |
 |---|---|
@@ -42,9 +45,9 @@ commits behind `dev`** — #34 was merged to `dev` only.
 | 13 · Deploy + CI/CD | ✅ Complete (PRs #22–#24) |
 | 14 · Clinical UI layout | ✅ Complete and live (PRs #29, #30) |
 | 15 · Sign-in page, mark, favicon | ✅ Complete and live (PRs #32, #33) |
-| 16 · User guide + repo sweep | ✅ Complete on `dev` (PR #34) |
+| 16 · User guide + repo sweep | ✅ Complete (PR #34) |
+| 12 · Tier 3 — AI trajectory summary | ✅ **Complete and live** (PRs #36, #37) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
-| 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
 ### Tier 1 against the brief's own six areas
 
@@ -67,6 +70,15 @@ commits behind `dev`** — #34 was merged to `dev` only.
 | 3 · Auth, failures, retries, no double-import | 100% |
 | 4 · Integration diagram in the README | 100% |
 | Import running from the **deployed** URL | 100% — 5/5 patients, slowest 3.4s of a 60s ceiling |
+
+### Tier 3 against the brief's own four questions
+
+| Question the brief asks | Answer |
+|---|---|
+| Grounded in the real data? | Every number computed in TypeScript; the model only narrates |
+| Hallucination risk handled? | Prompt, **mechanical output verification**, and the facts rendered beside the prose |
+| Prompt design thoughtful? | Narrator not analyst; score-direction inversion stated twice and tested |
+| Actually useful, or a demo? | One button on a page the clinician already reads; refuses rather than pads |
 
 ---
 
@@ -266,6 +278,58 @@ puts previews behind an SSO login, so a preview answers `200` and then redirects
 to a Vercel sign-in. **Preview verification is a human step**; scripted checks
 have to run against a local production build or against production itself.
 
+### 1h. Tier 3 — the trajectory summary (PRs #36, #37, live)
+
+A **Summarise** button on the patient page writes three to five sentences about
+what that patient's recorded data shows, beside the figures it was written from.
+
+**The design is the whole point, and it inverts the obvious one.** Handing a
+model the patient's rows asks it to do arithmetic and to judge clinical
+significance, and it does both fluently whether or not it does them correctly.
+So: **every number is computed in TypeScript, and the model only narrates them.**
+
+```
+lib/ai/facts.ts      pure   rows -> fact object (deltas, ranges, band moves)
+lib/ai/prompt.ts     pure   system prompt + that object, and nothing else
+lib/ai/verify.ts     pure   every number in the prose, checked against the facts
+lib/ai/config.ts     server-only, holds the key
+lib/ai/provider.ts   server-only, one POST, timeout + bounded retry
+lib/ai/summary.ts    load -> facts -> narrate -> verify
+```
+
+Two things follow. A number in the prose that is not in the fact object is
+**mechanically detectable**, so grounding is a check rather than a promise. And
+the same object is rendered beside the prose, so a clinician reads the summary
+*against* its source rather than instead of it.
+
+**The ungrounded path was proved, not argued.** The system prompt was
+temporarily amended to instruct the model to state the patient "walked 4821
+steps yesterday". It complied; the verifier caught `4821`; the prose was
+discarded and the panel rendered *"the generated note referred to 1 figure that
+does not appear in this patient's records"*, keeping the figures. Log line:
+`[ai] summary rejected as ungrounded patient=<id> unsupported=1` — an id and a
+count. The injection was reverted and `prompt.ts` is byte-identical to its
+commit.
+
+Measured on a production build in a real browser:
+
+| Check | Result |
+|---|---|
+| Summary end to end | **4.5s**, every figure traced back to the panel |
+| Ungrounded path | fires, discards the prose, keeps the figures |
+| `POST /api/ai/summary` signed out | **401** |
+| Not-configured state | renders as designed, no button |
+| Horizontal overflow with the summary rendered | **0** at 1920, 1280, 375 |
+| Tests | 268 → **299** |
+
+**Three things only a live probe found** — see §6f. All three would have shipped
+as plausible-looking defects.
+
+What it deliberately does not do: no chat, no history, no streaming, no RAG;
+nothing persisted; no clinical thresholds invented. What is sent: age, sex and
+the computed figures — never name, MRN, email, phone, the date of birth itself
+or any token, asserted in a test against the serialised payload.
+
 ---
 
 ## 2. Deadline
@@ -287,7 +351,9 @@ have to run against a local production build or against production itself.
 | ~~A2~~ | ~~Two patient records carry real personal inboxes~~ | **CLEARED, session 6.** Both renamed to fabricated identities and re-pushed to the platform — §4b. |
 | **A3** | **Demo figures no longer match older PR bodies, and drifted again** | Now **10 patients / 16 assessments / 69% / 201 labs / 2 uploads** — the ugly-CSV rows are back in the shared database, imported during a verification run and not restored (D-QA-2 not honoured). Found by accident, in the corner of a screenshot taken for something else. Nothing in the README quotes the old numbers, so this is cosmetic — but the live site should look deliberate. |
 | ~~A4~~ | ~~PR #29 is on `dev`, not production~~ | **CLEARED, session 6.** Promoted in #30 and verified live — §1e. |
-| **A5** | **`main` is three commits behind `dev`** | #34 — the user guide, the charset fix and the scaffold-asset removal — was merged to `dev` only, as asked. Documentation and dead assets, no schema change, so promoting is a merge whenever it is wanted. |
+| ~~A5~~ | ~~`main` is three commits behind `dev`~~ | **CLEARED, session 8.** Promoted as #35. |
+| ~~A6~~ | ~~`dev` was 16 commits behind `main`~~ | **CLEARED, session 8.** Tier 3 was merged straight to `main` in #37, bypassing `dev`, so the Preview environment and any new branch would have silently lacked it. `dev` was a clean ancestor and fast-forwarded. **Watch for this again:** the documented flow is feature → `dev` → `main`, and a feature merged directly to `main` leaves `dev` stale without warning. |
+| **A7** | **Tier 3 on production is unconfirmed** | Summarise was verified on the **preview** deployment. Production reads a *separate* set of Vercel environment variables. If `AI_PROVIDER` / `AI_API_KEY` / `AI_MODEL` were set for Preview only, the live panel reads "not configured on this deployment". One click on any patient at the live URL settles it. |
 
 ---
 
@@ -308,7 +374,11 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 | `EMAIL_PROVIDER` | ✅ | `resend` |
 | `EMAIL_API_KEY` | ✅ | **Secret.** Rotation was considered and closed by Joe — see A1 in §3. |
 | `EMAIL_FROM` | ✅ | `"PulseTrack <onboarding@resend.dev>"` — quotes and the `Name <addr>` form both parse correctly |
-| `AI_*` | ⬜ | Tier 3 only |
+| `AI_PROVIDER` | ✅ | `gemini`. **Not the model id** — see §6f |
+| `AI_API_KEY` | ✅ | **Secret.** Google AI Studio, free, no card. Current keys are ~53 chars starting `AQ.A`, not the older 39-char `AIza` shape |
+| `AI_MODEL` | ✅ | `gemini-3.1-flash-lite`, chosen by measurement — §6f |
+| `AI_BASE_URL` | ⬜ | Optional. Defaults correctly for `gemini` and `groq` |
+| `AI_REASONING_EFFORT` | ⬜ | Leave unset. Only for a reasoning model, and Gemini answers `400` to values it does not accept |
 
 **Database:** Neon, Postgres 17.11, AWS us-east-1 (matches Vercel's default `iad1`).
 
@@ -503,6 +573,10 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **An HTML file with no `<meta charset>`** | Chrome sniffs UTF-8; a browser opening a `file://` URL under a Windows locale is entitled to fall back to windows-1252 and render every em dash as `â€"`. Three of the four `.docs` documents were relying on the guess. **Do not fix it with a doctype** — adding one switches quirks mode to standards mode and can move a layout whose PDF has already been rendered. |
 | **`emulateMediaFeatures` does not survive `emulateMediaType("print")`** | A PDF rendered under a dark OS setting comes out as dark-theme text on the print stylesheet's white page — unreadable, and it looks fine on screen right up until the PDF is opened. Set the stylesheet's own `data-theme="light"` opt-out instead, and assert `getComputedStyle(body).color` before writing the file. |
 | **The Next dev overlay hides the bottom-left corner** | The dev-tools badge sits exactly where the rail's Sign out button is, so every development screenshot showed it covered rather than broken. **Any UI claim about that corner has to come from a production build.** |
+| **A model in the `/models` listing may still refuse to serve** | `gemini-2.5-flash` is listed by `GET /v1beta/models` and answers `404` *"no longer available to new users"* on every generate call. The listing is not an availability check. |
+| **Gemini 3.x charges thinking tokens against `max_tokens`** | And thinking expands to fill whatever budget it is given: at a 400-token cap, 396 went to reasoning and 13 to output. `reasoning_effort: "low"` suppressed it on a trivial prompt but **not** on the real one. `reasoning_effort: "none"` and native `thinkingConfig.thinkingBudget: 0` both `400`. |
+| **A truncated completion is the one failure the grounding check cannot catch** | `finish_reason: "length"` returned `"HBA1C (Hemoglobin A1c): 3"` — and `verify.ts` passes it, correctly, because `3` genuinely is one of the patient's figures. Truncation is not fabrication. It needs its own guard, and it is not retried: the budget is identical next time. |
+| **A mistyped `AI_PROVIDER` used to disable the feature silently** | The lookup missed, `readAiConfig()` returned null, and the panel said "not configured on this deployment" — true, unhelpful, and indistinguishable from setting nothing. `aiConfigProblem()` now names the variable. A wrong value and an absent value are different problems. |
 
 ---
 
@@ -605,6 +679,16 @@ Two lessons on top of the original:
   `EADDRINUSE` in the log and "10 patients" in an empty-state screenshot — the
   probe itself was perfectly happy.
 
+**It recurred again in session 8**, and the habit caught it. A rebuild was
+started to test the Tier 3 ungrounded path; the previous `npm start` still held
+port 3000 and was serving the **previous build**. Probing then would have
+reported a grounded summary from a binary that did not contain the change under
+test — a green pass from the wrong code. The only reason it was noticed is that
+the start command's log was read rather than assumed, and it said `EADDRINUSE`.
+
+**Kill by port and assert it is free before every single server start.** Three
+sessions, three occurrences.
+
 ---
 
 ### 6d. Deployment gotchas
@@ -652,6 +736,50 @@ The general form, third session running: **a check that passes tells you only
 about the thing it checks.** When one is written to catch a defect, ask what
 its mirror image would be and write that too.
 
+### 6f. Three Tier 3 findings that only a live probe could produce
+
+All three were invisible to tests, types and the build. Every one would have
+shipped looking fine.
+
+**A model that is listed but will not serve.** `AI_MODEL` was set to
+`gemini-2.5-flash`. `GET /v1beta/models` lists it; every generate call answers
+`404 "no longer available to new users… use models/gemini-3.6-flash"`. Listing a
+model is not the same as being allowed to call it, and only calling it says
+which.
+
+**Thinking tokens eat the output budget.** Gemini 3.x reasons before answering
+and charges that against `max_tokens`. At the shipped 400-token cap: **396
+tokens of reasoning, 13 of output.** Raising the cap did not fix it — thinking
+expanded to consume the new budget too (574 of 600). Latency reached 27s against
+a 20s client timeout. So the model was chosen by measuring the candidates
+against this exact prompt rather than by picking the biggest free one:
+
+| model | latency | thinking tokens | result |
+|---|---|---|---|
+| **`gemini-3.1-flash-lite`** | **1.5s** | **0** | complete |
+| `gemini-3.6-flash` | 16.7s | 1076 | complete only at a 4k cap |
+| `gemini-3.5-flash-lite` | — | — | timed out at 70s |
+| `gemini-2.5-flash-lite` | — | — | `404` |
+
+The feature narrates a fact object that is already computed. **There is nothing
+for a reasoning model to reason about**, and a clinician clicking a button waits
+a second and a half instead of seventeen.
+
+**Truncation defeats the grounding check.** This is the one worth carrying
+beyond this project. At the 400 cap the provider returned:
+
+> `HBA1C (Hemoglobin A1c): 3`
+
+`verify.ts` passed it — correctly. `3` genuinely is one of that patient's
+figures, so a number-checking verifier has nothing to object to. **Truncation is
+not fabrication**, and a check aimed at fabrication cannot see it. A clinician
+would have been shown half a sentence as a finished summary.
+
+The general form, and it is the same lesson as §6e wearing new clothes: **a
+guard catches the failure it was designed for and is blind to the one beside
+it.** Having built a number checker, the question to ask was "what wrong output
+contains only right numbers" — and the answer was sitting in `finish_reason`.
+
 ---
 
 ## 7. Architecture at a glance
@@ -664,6 +792,7 @@ app/api/auth/*            Auth.js
 app/api/fhir/sync         push one bounded batch     [new, session 4]
 app/api/fhir/import       pull one seeded MRN        [new, session 4]
 app/(dashboard)/integrations/fhir   the integration page   [new, session 4]
+app/api/ai/summary        one patient's trajectory summary [new, session 8]
 
 components/shell/nav.tsx  rail + bar navigation, active state [new, session 6]
 components/brand/mark.tsx Mark + Wordmark, both tones      [new, session 7]
@@ -683,6 +812,9 @@ lib/dashboard/    metrics (pure) · service (IO)
 lib/fhir/         systems · pagination · mappers · reconcile   (pure, tested)
                   config · client · throttle · errors           (server-only, holds the key)
                   push · pull · status · sync-hooks             (services)
+lib/ai/           facts · prompt · verify        (pure, tested — the grounding)
+                  config · provider              (server-only, holds the key)
+                  summary                        (service)
 lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
 lib/actions/      server actions — every one calls requireClinician()
@@ -695,6 +827,8 @@ scripts/vercel-env.sh     pushes .env to Vercel, names only
 components/ui/    Button · Field · Input · Select · Card · CardHeader · Alert
                   PageHeader · EmptyState · Skeleton · Badge   — no UI library
 components/patients/identity-banner.tsx   sticky patient identity [session 6]
+components/patients/trajectory-summary.tsx  the Tier 3 panel     [session 8]
+lib/assessments/bands.ts  band presentation, pure so the client can use it
 ```
 
 **Authorization is three layers deep**, because any one can be misconfigured:
@@ -724,6 +858,36 @@ Recorded in `.docs/01-challenge-analysis.md` §16 and now also in the **README's
 - **D-FHIR-5** Rebase `next` links (see §6).
 - **D-QA-1** Verification tooling (`puppeteer-core`) lives in the scratchpad, **never in `package.json`**.
 - **D-QA-2** Restore the demo database after any test that mutates it — its figures are quoted in the README, `state.md` and several PR bodies. *(Honoured since session 5: the ugly-CSV rows and the session-6 scratch database were both removed afterwards. The pre-existing drift is A3.)*
+
+New in session 8 (Tier 3). The README carries these as D-20, D-21 and D-22:
+
+- **D-AI-1 / D-20** The model **narrates precomputed facts**; it is never asked
+  to analyse. Every number is computed in `lib/ai/facts.ts` first. Handing over
+  the rows instead would ask a language model to do arithmetic and judge
+  clinical significance, which it does fluently whether or not it does them
+  correctly. This way every figure the summary can contain is already true, a
+  fabricated one is mechanically detectable, and the facts can be rendered
+  beside the prose. It is also less code, not more.
+- **D-AI-2 / D-21** An ungrounded summary is **discarded, not flagged**.
+  Showing suspect clinical prose with a caveat attached assumes the caveat is
+  read. The panel falls back to the figures alone and says why.
+- **D-AI-3 / D-22** Nothing generated is **ever persisted**. A machine-written
+  narrative stored against a patient becomes part of the record: it outlives the
+  data it described, and the next reader cannot tell a stale summary from a
+  current one.
+- **D-AI-4** The provider is an **OpenAI-compatible `/chat/completions`
+  endpoint, not an SDK**. Gemini, Groq, OpenRouter, Cerebras and Mistral all
+  speak it, so switching provider is two environment variables rather than a
+  rewrite — which matters because the feature depends on a free tier that can
+  rate-limit at the wrong moment. It also keeps a dependency out of
+  `package.json` for one `fetch` of a documented JSON shape.
+- **D-AI-5** The default model is a **non-reasoning `-lite` model**, chosen by
+  measurement (§6f). There is nothing for a reasoning model to reason about here
+  and its thinking tokens are charged against the output budget.
+- **D-AI-6** `bandTone` moved to a pure `lib/assessments/bands.ts`, re-exported
+  from `service.ts`. The client panel needed it and `service.ts` is
+  `server-only`; retyping the four band labels is exactly how the FHIR loading
+  skeleton drifted from its own page in #27.
 
 New in session 7:
 
@@ -842,7 +1006,11 @@ topology, 30 merged PRs, branches kept after merge.
 | #31 | `docs/session-6` | the session 6 record |
 | #32 | `feat/login-and-brand-mark` | the split sign-in page, the mark, and a favicon that is not the scaffold's |
 | #33 | `dev` → `main` | promotion of #31 and #32 — the new login page is live |
-| #34 | `docs/user-guide` | the user guide + PDF, the charset fix, and the scaffold-asset sweep — **on `dev`, not yet promoted** |
+| #34 | `docs/user-guide` | the user guide + PDF, the charset fix, and the scaffold-asset sweep |
+| #35 | `dev` → `main` | promotion of #34 |
+| #36 | `feat/ai-trajectory-summary` | **Tier 3** — facts, prompt, verifier, provider, service, route, panel |
+| #37 | `feat/ai-trajectory-summary` → `main` | Tier 3 promoted. **Went straight to `main`, bypassing `dev`** — see A6 |
+| #38 | `docs/session-7` | the session 7 record, committed in session 7 and pushed in session 8 |
 
 ### The branch flow changed in session 5
 
@@ -858,48 +1026,73 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**Tier 1 and Tier 2 are complete, deployed and verified live**, and the new UI,
-the sign-in page and the mark are live too. Nothing is blocked. Sessions 5–7
-cleared everything that was submission-blocking; what is left is two checks
-this machine cannot fake, one cosmetic decision, one promotion, and the email.
+**All three tiers are complete, deployed and live.** Tier 3 shipped in session 8
+(§1h) and is on `main`. Nothing is blocked. What remains is one check this
+machine cannot fake, one decision, the email, and a clock that has to run last.
 
-1. **The fresh-clone dry run** (checklist 9.1). Clone into a clean directory
-   and follow the README literally, on a machine that is not this one. The
-   first thing an evaluator does, and the one check this machine cannot
-   honestly perform on itself. CI has already caught one defect of this class —
-   the `LayoutProps` typegen failure in session 5.
+Ordered. The critical path is item 2, because only a human can do it, and item 6,
+because it cannot overlap with anything.
 
-2. **The cold start.** Leave the deployment idle an hour and load `/login`. It
-   is the single request an evaluator is guaranteed to make and the one path
-   never observed working end to end (§1b).
-   **Correction to the session 6 plan:** the clock **cannot** run in parallel
-   with other work. Every deploy runs `prisma migrate deploy`, which connects
-   to Neon and wakes the compute, so this has to be **the last thing done,
-   after the final deploy** — not the first.
+1. **Confirm Tier 3 on production** (A7) — 5 minutes. Summarise was verified on
+   the **preview** deployment; production reads a *separate* set of Vercel
+   environment variables. Open any patient with lab history on the live URL and
+   click Summarise. If it says "not configured on this deployment", the `AI_*`
+   variables were set for Preview only — add them for Production and
+   **redeploy**, because Vercel reads them at build time (§6d).
 
-3. **Promote #34 to `main`** (A5). The user guide, the charset fix and the
-   scaffold-asset removal are on `dev` only. Documentation and dead assets, no
-   schema change — a `dev → main` PR and a merge.
+2. **The fresh-clone dry run** (checklist 9.1) — 30–45 minutes, and **only a
+   human on another machine can do it**. Clone into a clean directory and follow
+   the README literally. It matters more now than it did yesterday: the README
+   gained an entire Tier 3 section and four new environment variables in session
+   8, and nobody has yet followed those instructions from nothing. CI has
+   already caught one defect of exactly this class — the `LayoutProps` typegen
+   failure in session 5.
 
-4. **Decide A3, the demo figures.** Restore, or accept 10/16/201/2 and say so.
-   Cosmetic, but do not leave two numbers disagreeing anywhere an evaluator
-   reads — and note the ugly-CSV rows have now come back **twice**, so
-   restoring a third time without changing the habit will not hold.
+3. **Decide A3, the demo figures** — 20 minutes. Restore, or accept
+   10/16/201/2 and say so. **Recommendation: accept and document.** The
+   ugly-CSV rows have drifted back **twice** now, so a third manual restore will
+   not hold without changing the habit, and the FHIR-imported rows are Tier 2
+   *working* — an evaluator should see them. Do not leave two numbers
+   disagreeing anywhere an evaluator reads.
 
-5. **Write the submission email.** Repo link, live URL, what is built, what is
-   deliberately not, and the things measured rather than claimed — the FHIR
-   import timing, the ugly-CSV outcome, the layout numbers. Point at
-   `.docs/06-using-pulsetrack.html` (§1g): it is the document to hand someone
-   before a walkthrough call.
+4. **Optional, cheap: the user guide does not mention Tier 3.**
+   `.docs/06-using-pulsetrack.html` bills itself as covering every screen and
+   what happens when you click, and the patient page now has a panel it does not
+   describe. Either add a short section or accept the gap knowingly — but note
+   that rendering it again means re-running the D-DOC-1 checks and re-exporting
+   the PDF, so it is 20 minutes rather than 5.
 
-6. **Optional, only if 1–5 are done:** phases D and E of the interface plan —
-   the density/table pass and chart reference bands. Both are real improvements
-   with a poorer ratio than A–C. Phase F (icons) is cut: a new dependency and a
-   new licence question the night before a deadline.
+5. **Write the submission email** — 30 minutes. Repo link, live URL, **a test
+   clinician login** (the brief requires it explicitly), what is built, what is
+   deliberately not. Lead with things **measured rather than claimed**: the FHIR
+   import at 3418ms against a 60s ceiling, the ugly CSV at 11/14/4, the summary
+   at 4.5s with the ungrounded path demonstrated, 299 tests. Point at
+   `.docs/06-using-pulsetrack.html` — it is the document to hand someone before
+   a walkthrough call. Worth one line that the first page load may be slow
+   because the free tier suspends compute; that reads as competence, not excuse.
 
-7. **Tier 3 stays out of scope** unless 1–5 are all done — its own Definition
-   of Done opens with "Tier 1 and Tier 2 are complete, deployed and QA'd
-   first," and the brief warns it evaluates *"judgment, not ambition."*
+6. **Final deploy, then the cold start — last, and alone.** Leave the deployment
+   idle about an hour, then load `/login` and time it. It is the single request
+   an evaluator is guaranteed to make and the one path never observed working
+   end to end (§1b).
+   **It cannot overlap with anything.** Every deploy runs `prisma migrate
+   deploy`, which connects to Neon and wakes the compute, so any deploy — and
+   any preview visit, seed, or `prisma studio` — resets the clock to zero.
+   Pass: the page loads, even slowly. Fail: an error, or `P1001` in the Vercel
+   function logs, in which case raise `connectionTimeoutMillis` in `lib/db.ts`,
+   redeploy, and wait another hour. That re-verification cost is the argument
+   for starting the wait no later than early evening.
+
+7. **Promote `dev` → `main`** once the session records land, so the published
+   docs match the deployed code.
+
+### Closed in session 8, do not redo
+
+- ~~Tier 3~~ — built, measured against a real provider, merged and **live**.
+  §1h, and §6f for the three findings that only a live probe produced.
+- ~~The session 7 record was never pushed~~ — merged as #38.
+- ~~`dev` 16 commits behind `main` (A6)~~ — fast-forwarded.
+- ~~Promote #34 (A5)~~ — merged as #35.
 
 ### Closed in session 7, do not redo
 
