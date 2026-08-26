@@ -9,7 +9,7 @@ import { TEST_CATALOG } from "@/lib/labs/test-catalog";
 
 import {
   itemBreakdown,
-  monthlyMeans,
+  monthlyClinicMeans,
   monthlyVolume,
   testInsight,
   usableRows,
@@ -142,12 +142,12 @@ export const clinicInsights = cache(async function clinicInsights(): Promise<Cli
     prisma.assessment.count({ where: { status: AssessmentStatus.COMPLETED } }),
   ]);
 
-  const { rows, excludedForUnit } = usableRows(labs);
+  const { rows, excludedForUnit, excludedByTest } = usableRows(labs);
 
   return {
     tests: TEST_CATALOG.map((test) => ({
-      ...testInsight(rows, test.code),
-      trend: monthlyMeans(rows, test.code),
+      ...testInsight(rows, test.code, excludedByTest[test.code] ?? 0),
+      trend: monthlyClinicMeans(rows, test.code),
     })),
     volume: monthlyVolume(rows),
     items: itemBreakdown(answers),

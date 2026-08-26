@@ -1117,6 +1117,79 @@ It is recomputed on request or not shown. A machine-written narrative stored
 against a patient becomes part of the record: it outlives the data it described,
 and the next reader has no way to tell a stale summary from a current one.
 
+### D-23: The clinic's monthly figure weights each patient equally, not each result
+
+The clinic monthly trend summarises **each patient's readings within a month
+first, then averages those patient-level values**. It is not the mean of every
+result collected that month.
+
+The two differ whenever one patient is measured more often than another:
+
+```
+Patient A: 100, 120, 140      Patient B: 180
+
+mean of results    (100 + 120 + 140 + 180) / 4 = 135
+mean of patients   ((100 + 120 + 140) / 3 + 180) / 2 = 150
+```
+
+135 is a fact about the appointment book as much as about the glucose — patient
+A carries three times patient B's weight for no reason other than being seen
+three times. A register is a population of people, and the figure a clinician
+means by "how is the clinic doing" is the second one. The difference is
+invisible on the chart, which is exactly why it is worth being deliberate about.
+
+The same rule already governed the headline figures: the median and the
+in-range counts come from `latestPerPatient`, one reading each, so a patient
+seen monthly counts once rather than twelve times. D-11 is this same principle
+applied to the risk distribution. The single exception is the histogram, which
+plots every result on purpose — the shape of the whole record is what a
+distribution is for.
+
+The two steps are separate, exported functions in `lib/dashboard/insights.ts` —
+`patientMonthlyMeans` then `monthlyClinicMeans` — so the intermediate step can
+be tested on its own. Each point's tooltip carries the patient count beside the
+result count, because a mean over one patient and a mean over thirty look
+identical on a line.
+
+### D-24: Histogram buckets are anchored at the reference floor, and a bucket that spans a limit says so
+
+Buckets used to start at multiples of the bucket width from zero, which put
+*both* of glucose's limits — 70 and 99 — inside a bucket rather than on an edge.
+The consequence was a bucket painted as in-range that held readings above the
+ceiling. Anchoring the grid at `refLow` makes the floor an edge for every test,
+and the ceiling too wherever it divides: systolic pressure's 90 and 120 both
+land on edges at a width of 5, so it has no straddling bucket at all.
+
+Where one is unavoidable, the bar takes a neutral tone and the tooltip names the
+limit it spans, rather than colouring as though the whole bucket were on one
+side. **A bucket is not normal because most of it is.** Below-range buckets are
+also told apart from in-range ones — under the previous two-state rule
+hypoglycaemia was painted identically to a perfectly normal reading.
+
+Buckets are half-open, `[from, to)`, except the last, which is closed so the
+highest reading lands inside it. The tooltip states this in words — "90 to under
+110 mg/dL" — because interval notation is not what a clinician reads.
+
+### D-25: A result in a non-canonical unit is excluded from every aggregate, never converted
+
+The CSV importer stores a mismatched unit exactly as reported and flags it
+rather than converting (D-CSV-5), because relabelling 5.4 mmol/L as mg/dL
+invents a glucose reading wrong by a factor of eighteen. Correct on import, and
+a trap on aggregation: averaging that row in with mg/dL readings is adding
+millimoles to milligrams, and the clinic mean moves by an amount nobody can see.
+
+So every clinic-wide figure filters to the test's canonical unit, and the page
+states how many rows that dropped — in total, and per test where a whole panel
+is affected. Nothing is converted and nothing stored is altered; the patient's
+own record keeps the value and the unit as reported. A conversion would only be
+added as an explicit, validated rule, never inferred.
+
+Clinic-level figures also always use the **catalog's** reference range for the
+test, never the `ref_low` / `ref_high` a particular CSV row carried — two labs
+can disagree, and averaging two disagreeing ranges produces a boundary neither
+lab uses. Individual patient charts keep their own reported range, shaded only
+when every result for that patient agrees on one.
+
 ---
 
 ## What is and isn't built

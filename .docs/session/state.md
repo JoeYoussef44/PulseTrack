@@ -1,9 +1,9 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-26**, session 9 (the assessment record made honest,
-> assessments made readable, and the clinic dashboard given something clinical
-> to say).
+> Last updated: **2026-08-26**, session 10 (the clinic analytics reviewed —
+> patients weighted equally in the trend, a float boundary bug in the histogram,
+> and a bucket that had been implying it was normal).
 
 ---
 
@@ -34,6 +34,10 @@ are all merged to `dev`, so the session record is in the repo rather than
 pending. It also removed a real identity that had reappeared in the
 live database and on the national platform (§4c).
 
+**Session 10 reviewed the analytics session 9 built** (§1j) rather than
+rebuilding them. PR **#45 is open on `dev` and not merged** — CI is green and
+the preview deployed. Tests 363 → 396.
+
 What remains before submitting is in §9. Nothing is blocked.
 
 **`dev` and `main` are no longer level.** That sentence was true through session
@@ -63,6 +67,7 @@ himself.
 | 17 · Assessment record + review page | ✅ Complete, on `dev` (PR #41) |
 | 18 · Clinic insight dashboard | ✅ Complete, on `dev` (PR #42) |
 | 19 · Session 9 record | ✅ Complete, on `dev` (PR #43) |
+| 20 · Clinic analytics review | 🟡 **PR #45 open on `dev`, unmerged** — §1j |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 
 ### Tier 1 against the brief's own six areas
@@ -400,6 +405,73 @@ Tests **299 → 363**.
 
 ---
 
+### 1j. Session 10 — the clinic analytics reviewed (PR #45, open, unmerged)
+
+A review of §1i's panels, not a rebuild. The histograms, the trend, the
+reference context, the unit protection and the styling all survive.
+
+**The clinic monthly figure now weights each patient equally.** It was the mean
+of every result collected that month, so a patient measured three times carried
+three times the weight of one measured once and the line tracked the appointment
+book as much as the population. Two exported steps —
+`patientMonthlyMeans` then `monthlyClinicMeans` — so the intermediate one is
+testable on its own.
+
+```
+Patient A: 100, 120, 140      Patient B: 180
+mean of results    (100 + 120 + 140 + 180) / 4 = 135
+mean of patients   ((100+120+140)/3 + 180) / 2 = 150
+```
+
+**Measured on the real register, it moves nothing.** Only **2 of 66
+patient-months** carry more than one reading, and in both the two patients have
+*equal* counts — which makes the two formulas mathematically identical. Every
+delta across three tests and thirteen months is rounding. The method is right
+and this seed does not exercise it. **Do not claim an improvement the data does
+not show**; the honest sentence is that it is a correctness fix which changes no
+current output and would the first time measurement counts differ.
+
+Three defects the request did not name, all found by reading the code and then
+the rendered page:
+
+| Defect | What it was |
+|---|---|
+| Float bin index | `(5.5 - 4.0) / 0.5` is `2.9999999999999996`, so an HbA1c of exactly 5.5 was filed one bucket *below* the one its own label names |
+| `medianLatest` unrounded | could reach the page as `5.1499999999999995` |
+| All-excluded looked like no-data | a test whose every result is in a non-canonical unit rendered nothing, and with all three so the page said "No lab results yet" — false |
+
+**A bucket is not normal because most of it is.** The histogram had one boolean,
+so hypoglycaemia was painted identically to a normal reading and a bucket
+straddling a limit was painted as though all of it were fine. Buckets are now
+anchored at the **reference floor**, which makes the floor an edge for every
+test and the ceiling one wherever it divides — systolic pressure has no
+straddling bucket at all at a width of 5. Where one is unavoidable the bar takes
+a neutral tone and the tooltip names the limit it spans.
+
+Each trend point's tooltip now carries **patients represented** beside **results
+collected**, because a mean over one patient and a mean over thirty look
+identical on a line.
+
+Verified on a **production build** in headless Chrome, signed in, on the real
+register: zero horizontal overflow at 1920/1440/1280/768/375, no console errors,
+37 bar rectangles and 39 line dots with real geometry, both tooltips read back as
+rendered, and tick density thinning 5 → 3 and 8 → 4 at 375px with every bar
+retained.
+
+Reviewed and deliberately **left alone** — recorded so nobody checks twice: unit
+handling (already correct, only the wording changed), reference-range
+determinism (already catalog-for-clinic, now D-25), sorting (already on
+timestamps), sparse months (already gaps), date handling (already UTC-safe),
+aggregation location (already server-side, pure, cached). A monthly median line
+was considered and **declined** — the mean is the requested trend and a second
+series costs more clarity than it adds.
+
+README gains **D-23** (the weighting, with the worked example), **D-24** (bucket
+anchoring and the four states) and **D-25** (unit exclusion, and why clinic
+figures use the catalog's range while patient charts use the reported one).
+
+---
+
 ## 2. Deadline
 
 - Interview: **Thursday 2026-08-27, noon.**
@@ -684,6 +756,10 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **A full-page screenshot renders every Recharts surface blank** | It looks exactly like four broken charts, and the dark navigation rail stops halfway down the image as well. Both are the capture resizing the viewport, not the page. **Measure the marks before believing the picture** — `getBoundingClientRect` on `.recharts-bar-rectangle` and the axis tick text — and take a viewport screenshot scrolled to the chart instead. |
 | **A stored unit that is not the canonical one poisons every aggregate** | The importer stores `5.4 mmol/L` against a mg/dL test exactly as reported and flags it, which is right (D-CSV, `.docs/05-ugly-csv-expected-outcomes.md` row 7). Averaging it in with 68 mg/dL readings is adding millimoles to milligrams and moves the clinic mean by an amount nobody can see. **Every clinic-wide figure filters to the canonical unit and states how many rows that dropped.** |
 | **A reference band outside the plotted domain is silently absent** | `TrendChart` shades the reference range — but only where it falls inside the y-domain. Every monthly HbA1c mean sits above the ceiling, so the band is never drawn, and a line trending downward reads as a clinic in range when nothing in it is. The chart is not wrong, it is *silent*. Where the visual channel has nothing to show, the caption has to say it in words. |
+| **A bin index computed as divide-then-floor is a float bug waiting** | `(5.5 - 4.0) / 0.5` is `2.9999999999999996`, so `Math.floor` puts a value that sits *exactly* on a bucket edge one bucket below the one its own label names. The bar is one place to the left and nothing about the chart looks wrong. Snap to the nearest integer when the remainder is within ~1e-9, which is also what a half-open `[from, to)` interval means. |
+| **A fill colour is a claim about every value the shape covers** | A histogram bucket painted "in range" asserts that of all of it, and the assertion is false the moment the bucket crosses the boundary the colour is about — glucose's ceiling of 99 inside an 80–100 bucket. Anchor the bin grid at a reference limit so limits fall on edges, and where one still lands inside a bucket, paint it neutral and say which limit it spans. Same shape as the unit finding: **a decision that is right at one layer becomes a defect at the next.** |
+| **A single `mouse.move` does not open a Recharts tooltip** | It listens for `mousemove`, and one jump from the origin does not reliably produce one over the plot area. Two moves do. A probe doing it once reports a working tooltip as dead — the fifth session running that a red probe was a claim about the probe. |
+| **`g.recharts-cartesian-axis text` matches nothing** | While `.recharts-cartesian-axis-tick-value` matches every tick on the same page. Separate x ticks from y by comparing rendered `getBoundingClientRect().top` rather than by trusting a class name the library is free to change. |
 | **A histogram bucket that is clinically sensible can still be useless** | 10 mmHg put the entire register's systolic pressure in three enormous bars. Blood pressure varies over a narrower range than glucose; the bucket width has to suit the measure's spread, not just its units. Draw it and look. |
 | **A mistyped `AI_PROVIDER` used to disable the feature silently** | The lookup missed, `readAiConfig()` returned null, and the panel said "not configured on this deployment" — true, unhelpful, and indistinguishable from setting nothing. `aiConfigProblem()` now names the variable. A wrong value and an absent value are different problems. |
 
@@ -1166,6 +1242,16 @@ clock that has to run last.
 Ordered. The critical path is item 2, because only a human can do it, and item 6,
 because it cannot overlap with anything.
 
+0a. **Decide PR #45** — the clinic analytics review (§1j). It is open on `dev`,
+   unmerged, CI green, preview deployed. It is a correctness fix that changes no
+   current output on this register, so merging it is safe and *not* merging it
+   costs nothing visible today either. Merge before item 0 if it is going in at
+   all, so there is one promotion rather than two.
+
+   ```bash
+   gh pr merge 45 --merge
+   ```
+
 0. **Promote `dev` → `main`. Joe is doing this himself** — asked at the end of
    session 9 and answered "hold, I'll promote myself", so this is not waiting on
    an agent and should not be done for him unasked.
@@ -1237,6 +1323,20 @@ because it cannot overlap with anything.
 7. *(Was a second promotion, once the session records landed. They landed in
    #43 before the session ended, so item 0 is the only one left — unless a
    further session adds commits to `dev` after the production promotion.)*
+
+### Closed in session 10, do not redo
+
+- ~~The clinic trend over-weighted frequently-measured patients~~ — patient
+  normalisation, PR #45. **And it moves nothing on this register** (§1j) — do
+  not re-measure hoping for a bigger number.
+- ~~A float bin index misfiled boundary values~~ — `stepIndex`, PR #45.
+- ~~`medianLatest` was unrounded~~ — PR #45.
+- ~~A histogram bucket implied it was wholly in range~~ — four states and a
+  reference-floor anchor, PR #45.
+- ~~"All excluded for unit" was indistinguishable from "no data"~~ — PR #45.
+- ~~Unit handling, reference-range determinism, sorting, sparse months, dates,
+  aggregation location~~ — **all reviewed and already correct.** Now tested and
+  documented as D-25. Do not audit them again.
 
 ### Closed in session 9, do not redo
 
