@@ -39,8 +39,6 @@ export function displayStatus(
 export interface StatusPresentation {
   label: string;
   tone: BandTone | "accent";
-  /** A second line, only where the label alone would overstate what happened. */
-  note?: string;
 }
 
 /**
@@ -53,8 +51,14 @@ export interface StatusPresentation {
  * badge was claiming a send that never left the building.
  *
  * A pending assessment therefore has two labels, not one, decided by whether a
- * real provider ever accepted the message. The clinician's next action differs
- * between them: wait, or hand over the link.
+ * real provider ever accepted the message.
+ *
+ * The label is all it returns. An earlier version added "share the link with
+ * the patient" as a second line, which is good advice for the row that was
+ * just created and bad advice for every other one: the raw token is shown once
+ * and only its hash is stored, so there is no link left to share on a row from
+ * last week. The honest next step there is a fresh invitation, and the label
+ * plus the assessment's own page say enough for a clinician to reach it.
  *
  * Completed and expired rows do not carry the distinction. By then the question
  * has been answered — the patient replied, or the window closed — and how the
@@ -76,9 +80,5 @@ export function statusPresentation(
     return { label: "Awaiting reply", tone: "accent" };
   }
 
-  return {
-    label: "Not emailed",
-    tone: "moderate",
-    note: "Link created — share it with the patient",
-  };
+  return { label: "Not emailed", tone: "moderate" };
 }

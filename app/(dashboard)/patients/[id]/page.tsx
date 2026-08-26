@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AssessmentRow } from "@/components/assessments/assessment-row";
 import { SendAssessment } from "@/components/assessments/send-assessment";
 import { LabTrends, ScoreTrend } from "@/components/charts/patient-trends";
 import { DeletePatient } from "@/components/patients/delete-patient";
@@ -193,7 +194,7 @@ export default async function PatientDetailPage({
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-sm">
+              <table className="w-full min-w-[30rem] text-sm">
                 <thead>
                   <tr className="border-b border-rule text-left">
                     {["Sent", "Status", "Completed", "Score", "Risk band"].map(
@@ -201,17 +202,13 @@ export default async function PatientDetailPage({
                         <th
                           key={h}
                           scope="col"
-                          className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                          className="px-4 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
                         >
                           {h}
                         </th>
                       ),
                     )}
-                    {/* The affordance column has no heading to give — the cell
-                        below it holds the link's visible label. */}
-                    <th scope="col" className="px-5 py-3">
-                      <span className="sr-only">Open</span>
-                    </th>
+
                   </tr>
                 </thead>
                 <tbody>
@@ -222,59 +219,47 @@ export default async function PatientDetailPage({
                     );
 
                     return (
-                      // `relative` on the row is what lets one anchor in the
-                      // first cell stretch over all of them, so the whole row
-                      // is the hit target while the markup stays one link in
-                      // one table cell — rather than six links to one place,
-                      // which is what a screen reader would have to read out.
-                      <tr
+                      // One anchor in the first cell is the navigation; the
+                      // row wrapper adds clicking anywhere as a convenience on
+                      // top of it. The CSS-only version — a stretched
+                      // `::after` on the anchor — was built first and measured
+                      // not to work: a table row does not reliably establish a
+                      // containing block, so the far side of the row was not a
+                      // hit target. See components/assessments/assessment-row.
+                      <AssessmentRow
                         key={a.id}
-                        className="relative border-b border-rule transition-colors last:border-0 hover:bg-subtle"
+                        href={`/patients/${patient.id}/assessments/${a.id}`}
+                        className="cursor-pointer border-b border-rule transition-colors last:border-0 hover:bg-subtle"
                       >
-                        <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
+                        <td className="tabular px-4 py-3 whitespace-nowrap text-ink-2">
                           <Link
                             href={`/patients/${patient.id}/assessments/${a.id}`}
                             aria-label={`Open the assessment sent ${toIsoDate(a.sentAt)} — ${presented.label}`}
-                            className="after:absolute after:inset-0 hover:text-ink"
+                            className="hover:text-ink hover:underline"
                           >
                             {toIsoDate(a.sentAt)}
                           </Link>
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           <Badge tone={presented.tone}>{presented.label}</Badge>
-                          {presented.note ? (
-                            <span className="mt-1 block text-xs text-muted">
-                              {presented.note}
-                            </span>
-                          ) : null}
                         </td>
-                        <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
+                        <td className="tabular px-4 py-3 whitespace-nowrap text-ink-2">
                           {a.completedAt ? toIsoDate(a.completedAt) : "—"}
                         </td>
-                        <td className="tabular px-5 py-3 font-mono whitespace-nowrap text-ink">
+                        <td className="tabular px-4 py-3 font-mono whitespace-nowrap text-ink">
                           {a.totalScore ?? "—"}
                           {a.totalScore !== null ? (
                             <span className="text-muted"> / {SCORE_MAX}</span>
                           ) : null}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           {a.riskBand ? (
                             <Badge tone={bandTone(a.riskBand)}>{a.riskBand}</Badge>
                           ) : (
                             <span className="text-muted">—</span>
                           )}
                         </td>
-                        {/* Aria-hidden: the row's one real link already carries
-                            the accessible name, and a second "View" announced
-                            after it would be a duplicate with no destination
-                            of its own. */}
-                        <td
-                          aria-hidden
-                          className="px-5 py-3 text-right text-xs whitespace-nowrap text-muted"
-                        >
-                          View →
-                        </td>
-                      </tr>
+                      </AssessmentRow>
                     );
                   })}
                 </tbody>
@@ -303,7 +288,7 @@ export default async function PatientDetailPage({
                         <th
                           key={h}
                           scope="col"
-                          className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                          className="px-4 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
                         >
                           {h}
                         </th>

@@ -144,20 +144,15 @@ describe("displayStatus", () => {
 
 describe("statusPresentation", () => {
   it("does not say an invitation is awaited when none was ever delivered", () => {
-    const presented = statusPresentation(AssessmentStatus.SENT, null);
-
-    expect(presented.label).toBe("Not emailed");
-    expect(presented.note).toBeTruthy();
+    expect(statusPresentation(AssessmentStatus.SENT, null).label).toBe(
+      "Not emailed",
+    );
   });
 
   it("says an invitation is awaited only once one was delivered", () => {
-    const presented = statusPresentation(
-      AssessmentStatus.SENT,
-      AT("2026-08-26"),
-    );
-
-    expect(presented.label).toBe("Awaiting reply");
-    expect(presented.note).toBeUndefined();
+    expect(
+      statusPresentation(AssessmentStatus.SENT, AT("2026-08-26")).label,
+    ).toBe("Awaiting reply");
   });
 
   it("drops the delivery distinction once the question has been settled", () => {
