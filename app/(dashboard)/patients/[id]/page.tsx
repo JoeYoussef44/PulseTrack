@@ -16,7 +16,12 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { aiConfigProblem, isAiConfigured } from "@/lib/ai/config";
-import { bandTone, displayStatus } from "@/lib/assessments/service";
+import { SCORE_MAX } from "@/lib/assessments/definition";
+import {
+  bandTone,
+  displayStatus,
+  statusPresentation,
+} from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { toLabSeries, toScoreSeries } from "@/lib/labs/series";
@@ -59,6 +64,7 @@ export default async function PatientDetailPage({
           status: true,
           sentAt: true,
           expiresAt: true,
+          emailDeliveredAt: true,
           completedAt: true,
           totalScore: true,
           riskBand: true,
@@ -172,7 +178,7 @@ export default async function PatientDetailPage({
         <Card>
           <CardHeader
             title="Assessments"
-            description="DSMA-8 self-assessment history"
+            description="DSMA-8 self-assessment history. Open a row to read the patient's answers."
             action={
               <SendAssessment
                 patientId={patient.id}
@@ -187,49 +193,60 @@ export default async function PatientDetailPage({
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="border-b border-rule text-left">
                     {["Sent", "Status", "Completed", "Score", "Risk band"].map(
                       (h) => (
                         <th
                           key={h}
+                          scope="col"
                           className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
                         >
                           {h}
                         </th>
                       ),
                     )}
+                    {/* The affordance column has no heading to give — the cell
+                        below it holds the link's visible label. */}
+                    <th scope="col" className="px-5 py-3">
+                      <span className="sr-only">Open</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {assessments.map((a) => {
-                    const status = a.displayStatus;
+                    const presented = statusPresentation(
+                      a.displayStatus,
+                      a.emailDeliveredAt,
+                    );
 
                     return (
+                      // `relative` on the row is what lets one anchor in the
+                      // first cell stretch over all of them, so the whole row
+                      // is the hit target while the markup stays one link in
+                      // one table cell — rather than six links to one place,
+                      // which is what a screen reader would have to read out.
                       <tr
                         key={a.id}
-                        className="border-b border-rule last:border-0"
+                        className="relative border-b border-rule transition-colors last:border-0 hover:bg-subtle"
                       >
                         <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
-                          {toIsoDate(a.sentAt)}
+                          <Link
+                            href={`/patients/${patient.id}/assessments/${a.id}`}
+                            aria-label={`Open the assessment sent ${toIsoDate(a.sentAt)} — ${presented.label}`}
+                            className="after:absolute after:inset-0 hover:text-ink"
+                          >
+                            {toIsoDate(a.sentAt)}
+                          </Link>
                         </td>
                         <td className="px-5 py-3">
-                          <Badge
-                            tone={
-                              status === "COMPLETED"
-                                ? "low"
-                                : status === "EXPIRED"
-                                  ? "neutral"
-                                  : "accent"
-                            }
-                          >
-                            {status === "COMPLETED"
-                              ? "Completed"
-                              : status === "EXPIRED"
-                                ? "Expired"
-                                : "Awaiting reply"}
-                          </Badge>
+                          <Badge tone={presented.tone}>{presented.label}</Badge>
+                          {presented.note ? (
+                            <span className="mt-1 block text-xs text-muted">
+                              {presented.note}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
                           {a.completedAt ? toIsoDate(a.completedAt) : "—"}
@@ -237,7 +254,7 @@ export default async function PatientDetailPage({
                         <td className="tabular px-5 py-3 font-mono whitespace-nowrap text-ink">
                           {a.totalScore ?? "—"}
                           {a.totalScore !== null ? (
-                            <span className="text-muted"> / 24</span>
+                            <span className="text-muted"> / {SCORE_MAX}</span>
                           ) : null}
                         </td>
                         <td className="px-5 py-3">
@@ -246,6 +263,16 @@ export default async function PatientDetailPage({
                           ) : (
                             <span className="text-muted">—</span>
                           )}
+                        </td>
+                        {/* Aria-hidden: the row's one real link already carries
+                            the accessible name, and a second "View" announced
+                            after it would be a duplicate with no destination
+                            of its own. */}
+                        <td
+                          aria-hidden
+                          className="px-5 py-3 text-right text-xs whitespace-nowrap text-muted"
+                        >
+                          View →
                         </td>
                       </tr>
                     );
