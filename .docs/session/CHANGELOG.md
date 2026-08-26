@@ -8,6 +8,131 @@ reconstruct it from diffs.
 
 ---
 
+## Session 8 — 2026-08-26 (Wed, submission day) — Tier 3, and three things only a live probe could find
+
+Four merged PRs (#35–#38). **Tier 3 is built, measured and live**, so all three
+tiers are now complete. Tests 268 → 299. The session 7 record, which had been
+committed but never pushed, finally reached the repo.
+
+Joe asked first whether Tier 3 was feasible at all and what it would cost. The
+estimate was 5–7 hours; it took closer to two, because the analysis had already
+settled the design in §18 and almost all the plumbing — the series functions,
+the reference ranges, the band logic, the error-state primitives, an
+external-API client to copy — already existed. **The estimate was wrong in the
+direction of assuming work that was already done.**
+
+### Not ChatGPT, and why
+
+Joe has a $20 ChatGPT subscription and asked whether it was usable. It is not,
+for two independent reasons: a Plus subscription does not include API access at
+all, and the brief says in as many words *"any model with a genuinely free API
+key… No paid keys."* Either one is disqualifying on its own. Gemini was chosen
+from the two the brief names.
+
+### The design: the model narrates, it does not analyse
+
+The obvious build hands the model the patient's rows and asks what it sees. That
+asks a language model to do arithmetic and to judge clinical significance, and
+it does both fluently whether or not it does them correctly — a fabricated
+HbA1c delta reads exactly like a real one.
+
+So the split runs the other way: **every number is computed in TypeScript, and
+the model only narrates them.** Two things follow, and they are the whole
+argument. A number in the prose that is not in the fact object is *mechanically
+detectable*, so grounding becomes a check rather than a promise. And the same
+object is rendered beside the prose, so a clinician reads the summary against
+its source rather than instead of it.
+
+It is also less code than the fluent version, not more.
+
+**The ungrounded path was proved rather than asserted.** The system prompt was
+temporarily amended to tell the model to state that the patient "walked 4821
+steps yesterday". It complied; the verifier caught `4821`; the prose was
+discarded and the panel rendered the withheld state with the real figures
+intact. The injection was reverted and `prompt.ts` is byte-identical to its own
+commit.
+
+### Three findings that only a live probe could produce
+
+Every one was invisible to tests, types and the build, and every one would have
+shipped looking fine. Full detail in `state.md` §6f.
+
+- **A model can be listed and still refuse to serve.** `gemini-2.5-flash`
+  appears in `GET /v1beta/models` and answers `404 "no longer available to new
+  users"` on every generate call.
+- **Gemini 3.x charges thinking tokens against `max_tokens`, and thinking
+  expands to fill the budget.** At the 400-token cap the branch shipped with:
+  396 tokens of reasoning, 13 of output. Raising the cap did not help — thinking
+  took the new budget too. Latency hit 27s against a 20s client timeout. The
+  model was then chosen by measuring five candidates against this exact prompt;
+  `gemini-3.1-flash-lite` does it in **1.5s with zero thinking tokens**, against
+  16.7s and 1076 for `gemini-3.6-flash`. There is nothing here for a reasoning
+  model to reason about.
+- **Truncation defeats a grounding check, and this is the one worth keeping.**
+  At the 400 cap the provider returned `"HBA1C (Hemoglobin A1c): 3"` with
+  `finish_reason: "length"`. `verify.ts` passed it — *correctly*, because `3`
+  genuinely is one of that patient's figures. **Truncation is not fabrication**,
+  so a checker aimed at fabrication is blind to it, and a clinician would have
+  been shown half a sentence as a finished summary.
+
+That last one is §6e's lesson again in new clothes: a guard catches the failure
+it was designed for and is blind to the one beside it. Having built a number
+checker, the question to ask was "what wrong output contains only right
+numbers" — and the answer was sitting in `finish_reason` the whole time.
+
+### A fourth, found by writing the test before trusting the code
+
+The verifier's number scanner skipped any figure ending a sentence —
+`...rose to 7.1.` — because its lookahead excluded a trailing full stop. A
+fabrication in the most common position in the output would never have been
+checked, and **every summary would have been reported as grounded**. There is a
+regression test for it. Two sibling false-positive shapes were fixed the same
+way: instrument names containing digits (`HbA1c`, `DSMA-8`) and dates.
+
+### A configuration failure that hid itself
+
+Joe pasted the model id into `AI_PROVIDER`. The lookup missed, `readAiConfig()`
+returned null, and the panel reported "not configured on this deployment" —
+true, unhelpful, and indistinguishable from having set nothing at all.
+`aiConfigProblem()` now names the offending variable. **A wrong value and an
+absent value are different problems and should not produce the same message.**
+
+Also worth recording: the key was doubted and should not have been. Current
+Google AI Studio keys are ~53 characters starting `AQ.A`, not the older 39-char
+`AIza` shape. A probe settled it in one call; the doubt was unfounded.
+
+### The stale server, a third time
+
+A rebuild was started to test the ungrounded path, and the previous `npm start`
+still held port 3000, serving the **previous build**. Probing then would have
+reported a grounded summary from a binary that did not contain the change under
+test — a green pass from the wrong code. It was caught only because the start
+command's log was read rather than assumed, and it said `EADDRINUSE`.
+
+Three sessions, three occurrences. **Kill by port and assert it is free before
+every server start.**
+
+### Git topology
+
+Tier 3 was merged to `main` in #37 **directly from the feature branch**,
+bypassing `dev`, which left `dev` 16 commits behind and silently without Tier 3
+— including the Preview environment and any branch cut from it. `dev` was a
+clean ancestor and fast-forwarded. The documented flow is feature → `dev` →
+`main`, and a direct merge to `main` breaks it without warning.
+
+### Left undone
+
+- **Tier 3 on production is unconfirmed** (A7). Summarise was verified on the
+  *preview*; production reads a separate set of Vercel variables.
+- **The fresh-clone dry run**, still never done — and now more load-bearing,
+  since the README gained a Tier 3 section and four environment variables today.
+- **A3, the demo figures.** Recommendation recorded: accept and document.
+- **The user guide does not mention the Tier 3 panel.**
+- **The submission email.**
+- **The cold start** — last, alone, after the final deploy.
+
+---
+
 ## Session 7 — 2026-08-26 (Wed, submission day) — a first impression, a walkthrough, and a sweep
 
 Four merged PRs (#31, #32, #33, #34). The sign-in page and the browser tab —
