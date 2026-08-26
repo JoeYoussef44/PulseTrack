@@ -10,8 +10,12 @@ reconstruct it from diffs.
 
 ## Session 9 — 2026-08-26 (Wed) — one question, and the three things it turned out to be
 
-Two merged PRs (#41, #42). Tests 299 → 363. It started with Joe asking why some
-patients have assessments they never submitted or were never sent.
+Three merged PRs (#41, #42, #43). Tests 299 → 363. It started with Joe asking
+why some patients have assessments they never submitted or were never sent.
+
+Everything landed on `dev`. **Production was deliberately not touched** — asked
+whether to promote, Joe said he would do it himself, so `dev` ends the session
+11 commits ahead of `main`.
 
 ### The answer, and why it was worth chasing
 
