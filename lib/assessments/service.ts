@@ -158,28 +158,13 @@ export async function submitAssessment(
   return { ok: true, totalScore, bandLabel: band.label };
 }
 
-/** Band metadata for rendering a stored score. */
-export function bandByLabel(label: string) {
-  return DSMA8.scoring.bands.find((b) => b.label === label);
-}
-
-/** Maps a risk band to the UI tone used by the Badge component. */
-export function bandTone(
-  label: string | null | undefined,
-): "neutral" | "low" | "moderate" | "high" | "critical" {
-  switch (label) {
-    case "Low risk":
-      return "low";
-    case "Moderate risk":
-      return "moderate";
-    case "High risk":
-      return "high";
-    case "Very high risk":
-      return "critical";
-    default:
-      return "neutral";
-  }
-}
+/**
+ * Band presentation lives in `./bands`, which is pure, so that the Tier 3
+ * summary panel can use it from the client without importing this module's
+ * `server-only` marker. Re-exported here so every existing call site is
+ * unchanged and there is still exactly one definition.
+ */
+export { bandByLabel, bandTone, type BandTone } from "./bands";
 
 /**
  * The status to show for a stored assessment.
