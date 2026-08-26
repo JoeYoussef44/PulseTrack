@@ -28,19 +28,43 @@ export interface AiConfig {
   baseUrl: string;
   model: string;
   apiKey: string;
+  /**
+   * Passed through as `reasoning_effort` when set. Only meaningful on a
+   * reasoning model; unset by default because the default model is not one, and
+   * because providers that do not know the parameter reject the request.
+   */
+  reasoningEffort?: string;
 }
 
 /**
  * Defaults per provider, so a working setup is two variables rather than four.
  *
- * The model ids are the free-tier defaults at the time of writing. Model names
- * change more often than endpoints, which is why `AI_MODEL` overrides this
- * without touching code.
+ * Model ids change more often than endpoints, which is why `AI_MODEL` overrides
+ * this without touching code.
+ *
+ * **The Gemini default is a `-lite` model on purpose, and it was chosen by
+ * measurement rather than by picking the biggest free thing.** Against this
+ * exact prompt:
+ *
+ * | model                  | latency | thinking tokens | result             |
+ * |------------------------|---------|-----------------|--------------------|
+ * | `gemini-3.1-flash-lite`| 1.5s    | 0               | complete           |
+ * | `gemini-3.6-flash`     | 16.7s   | 1076            | complete at 4k cap |
+ * | `gemini-3.5-flash-lite`| —       | —               | timed out at 70s   |
+ * | `gemini-2.5-flash`     | —       | —               | 404 for new keys   |
+ *
+ * The feature narrates a fact object that is already computed. There is nothing
+ * for a reasoning model to reason about, and its thinking tokens are charged
+ * against the output budget — see `readText` in `provider.ts`. A clinician
+ * clicking a button gets an answer in a second and a half instead of seventeen.
  */
-const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; model: string }> = {
+const PROVIDER_DEFAULTS: Record<
+  string,
+  { baseUrl: string; model: string }
+> = {
   gemini: {
     baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-    model: "gemini-2.0-flash",
+    model: "gemini-3.1-flash-lite",
   },
   groq: {
     baseUrl: "https://api.groq.com/openai/v1",
@@ -75,12 +99,47 @@ export function readAiConfig(): AiConfig | null {
     baseUrl: baseUrl.replace(/\/+$/, ""),
     model,
     apiKey,
+    reasoningEffort: process.env.AI_REASONING_EFFORT?.trim() || undefined,
   };
 }
 
 /** True when the feature is configured. Safe to expose — carries no secret. */
 export function isAiConfigured(): boolean {
   return readAiConfig() !== null;
+}
+
+/**
+ * Why the configuration is incomplete, for the panel and the server log.
+ *
+ * This exists because of a real misconfiguration during development: the model
+ * id was pasted into `AI_PROVIDER`, so the lookup missed, `readAiConfig()`
+ * returned null, and the panel reported "not configured on this deployment" —
+ * which was true, unhelpful, and indistinguishable from having set nothing at
+ * all. A wrong value and an absent value are different problems and should not
+ * produce the same message.
+ *
+ * Names and the offending provider label only. `AI_PROVIDER` is not a secret;
+ * the key never appears here.
+ */
+export function aiConfigProblem(): string | null {
+  const apiKey = process.env.AI_API_KEY?.trim();
+  if (!apiKey) return "AI_API_KEY is not set.";
+
+  const provider = (process.env.AI_PROVIDER?.trim() || "gemini").toLowerCase();
+
+  if (!PROVIDER_DEFAULTS[provider]) {
+    const hasExplicit =
+      Boolean(process.env.AI_BASE_URL?.trim()) &&
+      Boolean(process.env.AI_MODEL?.trim());
+
+    if (!hasExplicit) {
+      return `AI_PROVIDER is "${provider}", which is not one of ${Object.keys(
+        PROVIDER_DEFAULTS,
+      ).join(", ")}. Either use one of those, or set AI_BASE_URL and AI_MODEL explicitly. (A model id such as "gemini-2.5-flash" belongs in AI_MODEL, not AI_PROVIDER.)`;
+    }
+  }
+
+  return readAiConfig() === null ? "The AI configuration is incomplete." : null;
 }
 
 /**
