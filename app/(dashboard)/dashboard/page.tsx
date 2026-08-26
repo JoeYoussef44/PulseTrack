@@ -7,6 +7,8 @@ import {
   RiskDistribution,
   StatTile,
 } from "@/components/dashboard/figures";
+import { ItemBreakdownCard } from "@/components/dashboard/item-breakdown";
+import { LabInsights, LabVolume } from "@/components/dashboard/lab-insights";
 import { RecentUploads } from "@/components/dashboard/recent-uploads";
 import {
   Button,
@@ -17,7 +19,7 @@ import {
   Skeleton,
 } from "@/components/ui";
 import { requireClinician } from "@/lib/auth/session";
-import { clinicMetrics } from "@/lib/dashboard/service";
+import { clinicInsights, clinicMetrics } from "@/lib/dashboard/service";
 import {
   formatRate,
   higherRiskCount,
@@ -166,6 +168,71 @@ function RiskBandsSkeleton() {
   );
 }
 
+/* --------------------------------------------------------------- insights -- */
+
+/**
+ * The clinical panels: the three measures, then the questionnaire.
+ *
+ * One Suspense boundary around all of it rather than four, deliberately. They
+ * come from a single `clinicInsights()` call, so splitting them would buy four
+ * skeletons resolving at the same instant — flicker rather than progressive
+ * disclosure. The tile strip above is a separate boundary because it is a
+ * separate query and genuinely does resolve first.
+ *
+ * Order is the order a clinician reads in: what the register looks like now and
+ * which way it is moving, then how much data is arriving, then which behaviour
+ * to work on. The last one is the only panel that suggests an action.
+ */
+async function Insights() {
+  const insights = await clinicInsights();
+
+  return (
+    <>
+      <LabInsights
+        tests={insights.tests}
+        excludedForUnit={insights.excludedForUnit}
+      />
+
+      {/* `items-start`, so a card sized to a 14rem chart does not stretch to
+          match a card holding eight questionnaire rows. Equal heights are worth
+          having when both cards fill them; here it bought 500px of empty white
+          inside the shorter one, which reads as a panel that failed to load. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(28rem,100%),1fr))] items-start gap-6">
+        <LabVolume points={insights.volume} />
+        <ItemBreakdownCard
+          items={insights.items}
+          assessmentCount={insights.assessmentCount}
+        />
+      </div>
+    </>
+  );
+}
+
+function InsightsSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      {[0, 1].map((row) => (
+        <div
+          key={row}
+          className="grid grid-cols-[repeat(auto-fit,minmax(min(28rem,100%),1fr))] gap-6"
+        >
+          {[0, 1].map((col) => (
+            <Card key={col}>
+              <div className="flex flex-col gap-2 border-b border-rule px-5 py-4">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-64" />
+              </div>
+              <div className="px-5 py-5">
+                <Skeleton className="h-44 w-full" />
+              </div>
+            </Card>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------- page -- */
 
 export default async function ClinicDashboardPage({
@@ -220,6 +287,10 @@ export default async function ClinicDashboardPage({
           <RecentUploads window={window} />
         </Suspense>
       </div>
+
+      <Suspense fallback={<InsightsSkeleton />}>
+        <Insights />
+      </Suspense>
     </div>
   );
 }
