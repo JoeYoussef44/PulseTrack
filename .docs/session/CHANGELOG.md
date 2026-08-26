@@ -8,6 +8,178 @@ reconstruct it from diffs.
 
 ---
 
+## Session 7 — 2026-08-26 (Wed, submission day) — a first impression, a walkthrough, and a sweep
+
+Four merged PRs (#31, #32, #33, #34). The sign-in page and the browser tab —
+the first two things anyone sees — stopped being the defaults. The app got a
+document that explains how to *use* it. The repo lost its scaffold leftovers.
+Tests unchanged at 268; nothing here touches product logic.
+
+**`main` is three commits behind `dev`** at the end of this session: #34 was
+merged to `dev` only, because that is what was asked for. Documentation and a
+dead-asset removal, no schema change, so promoting is a merge whenever it is
+wanted.
+
+### The login page and the mark (#32, promoted in #33)
+
+Joe asked for a sign-in page that fills the space, with the product beside the
+form, a logo, and a favicon. Two things turned out to be true before any of it
+was built:
+
+- The shell rendered **1104px of centred box on an empty field** — the same
+  diagnosis as #29, one page later.
+- **`app/favicon.ico` was still the `create-next-app` file**, untouched since
+  the initial commit. The live site had been showing the Next.js logo in the
+  browser tab for the whole project.
+
+Built: a pulse-trace mark, short on vertices because a favicon is read at 16px;
+a split page with the product on `--color-deep` — the rail's own surface — on
+the left and the form on the right; the panel dropped below `lg` with the mark
+moving above the card, the way the rail becomes a bar; and one `<Wordmark/>`
+now serving the rail, the mobile bar and the login page instead of four
+hand-typed copies of two strings.
+
+**The geometry is defined once**, in `lib/brand/mark.ts`. The React component
+and the generated `app/icon.svg` both import it. Drawing the same shape twice
+in a `.tsx` and an `.svg` is exactly how the FHIR loading skeleton drifted from
+its own page in #27 — the fix there was to stop writing the heading out twice,
+and a logo is the same class of thing. `app/favicon.ico` is rasterised from
+that SVG at 16/32/48 by the scratchpad's headless Chrome, which stays out of
+`package.json` (D-QA-1), so it is committed as a binary and the script's header
+says how to regenerate it.
+
+Measured on a production build, then again on production itself: zero
+horizontal overflow at 1920, 1440, 1280, 768 and 375; both icon files served
+and **decoding** — 200 `image/svg+xml` and 200 `image/x-icon`, 48×48 — with the
+live `favicon.ico` byte-identical to the committed blob; sign-in still working
+end to end.
+
+One correction worth keeping: the first cut pinned the panel's text to the left
+edge of a 960px column at 1920, which left a dead middle. The screenshot said
+so; the overflow measurement did not. Content moved into one centred column.
+
+### A red probe that lied (#32)
+
+The sign-in probe reported a **failure that was not real**. It read
+`page.url()` after `waitForNavigation`, but the server action redirects
+client-side, so it checked before the redirect landed. The credentials had been
+correct all along.
+
+Every previous instance of this in the changelog is a *green* probe passing
+without reaching the code under test. This is the mirror image, and it is worth
+naming because the reflex — "the app is broken" — points at the wrong thing.
+**A probe's verdict is a claim about the probe until the mechanism is
+understood.** Fixed by waiting on the pathname actually changing.
+
+### The user guide (#34)
+
+`.docs/06-using-pulsetrack.html` and a 16-page PDF: what every screen does,
+what happens when you click, and the rules the app will not break, for both
+tiers. It exists because the three documents already in `.docs` explain the
+product, the QA plan and the integration, and **none of them answers "what
+happens when I press this button"** — which is the question that was actually
+asked, about *Download template* and *Import* specifically.
+
+Written from the code rather than from memory. The CSV rejection rules, the
+token lifecycle, the band thresholds, the batch sizes and the page counts were
+each read out of the implementation before being written down, so the guide
+cannot quietly describe an app we do not have.
+
+**Four defects came out of rendering it**, every one invisible in the markup:
+
+- **Text bled out of nine boxes** across all three diagrams. The first checker
+  compared text against *text* — which is session 5's lesson in mirror image,
+  since that time the checker tested text-against-box and missed a
+  text-against-text collision. Adding the missing direction found two more in
+  the FHIR diagram **after the set already looked clean**.
+- A dashed rule ran 100 units past its viewBox.
+- Six cards in a four-column grid left two empty cells showing the grid gap
+  colour as a bare grey block — the dead-half-row defect from §1d of
+  `state.md`, in a new place.
+- **The PDF rendered dark-theme text onto the print stylesheet's white page.**
+  `emulateMediaFeatures` does not survive `emulateMediaType("print")`. The
+  renderer now sets the `data-theme="light"` opt-out the stylesheet already
+  defines. Checked against the other three PDFs afterwards by inflating their
+  streams and reading the fill operators: all four share `#0F1A17`, so this was
+  new and not a pre-existing defect in the earlier documents.
+
+The general shape, again: **a check that passes tells you only about the thing
+it checks.** Three sessions running, the defects have been found by looking at
+the rendered artefact and by adding the check that the last one's absence
+implied.
+
+### Why the HTML documents "could not be opened"
+
+Joe reported being unable to open the `.docs` HTML files and asked whether they
+could be deleted. They are the sources the PDFs are rendered from, so the
+answer mattered.
+
+It was not the files. This machine's association is `.html → htmlfile →
+"C:\Program Files\Internet Explorer\iexplore.exe"`, and Internet Explorer does
+not run on Windows 11 — so a double-click hands the file to a browser that is
+not there and nothing happens. The per-user default is Edge; anything going
+through the classic association misses it.
+
+The pass did turn up a real defect in the files: **three of the four never
+declared `<meta charset="utf-8">`** despite being full of em dashes, curly
+quotes and arrows. Chrome sniffs it correctly; a browser opening a `file://`
+URL under a Windows locale is entitled to fall back to windows-1252 and render
+every dash as `â€"`. One line each — and deliberately **not** a doctype, which
+would switch these documents from quirks mode to standards mode and can move a
+layout their PDFs were already rendered from. Re-measured after: height
+unchanged at 14826px.
+
+### The sweep (#34)
+
+Removed the five `create-next-app` SVGs in `public/` — `file`, `globe`, `next`,
+`vercel`, `window` — referenced by nothing.
+
+Nothing else is dead, and that was checked rather than assumed: every module
+under `lib/` and `components/` is imported, `lib/assessments/dsma8.json` is
+**byte-identical to the official attachment**, and the served CSV template is
+byte-identical to the supplied one. Both of those are worth re-running rather
+than trusting this note — a drift in either is a defect that no test would
+catch.
+
+### The demo database has drifted further, and it was found by accident
+
+A screenshot taken while verifying the navigation rail showed the dashboard
+reading **201 lab results and two uploads**, with `lab-results-ugly.csv` in
+recent imports. `state.md` §4 records 190 and one.
+
+So the ugly-CSV rows are back in the shared demo database — imported during
+some verification run and not restored, which is D-QA-2 not being honoured. It
+is cosmetic rather than incorrect, and it is folded into A3, but it is now
+**10 patients / 16 assessments / 201 labs / 2 uploads** and a decision is still
+owed before submitting.
+
+Worth noting how it surfaced: nobody was looking for it. It was legible in the
+corner of a screenshot taken for something else entirely.
+
+### Git and environment notes
+
+- **Excel holding a file blocks `git checkout` and `git pull`**, with
+  `unable to unlink … Invalid argument` and `Device or resource busy`. The
+  working tree sat on a 22-commit-stale `main` for part of the session because
+  `.docs/lab-results-ugly.csv` was open. Nothing was wrong with git. Close the
+  file, then pull.
+- PR #33 was created and merged within ninety seconds of the `dev` merge, from
+  the same account this session pushes as. Recorded because it was not obvious
+  at the time whether it was a person or an automation.
+
+### Left undone
+
+- **The fresh-clone dry run**, still never done.
+- **The cold start**, still never observed end to end — and a correction to the
+  session 6 plan for it: the clock **cannot** run in parallel with any work,
+  because a deploy runs `prisma migrate deploy`, which connects to Neon and
+  wakes the compute. It has to be the last thing done after the final deploy.
+- **A3, the demo figures** — now 10/16/201/2 against a documented 190/1.
+- **Promoting #34 to `main`.**
+- The submission email.
+
+---
+
 ## Session 6 — 2026-08-25 (Tue, later) — the last real-data problem, the states nobody had seen, and a frame
 
 Three merged PRs of substance (#27, #29, plus the #25/#26/#28 backlog cleared),

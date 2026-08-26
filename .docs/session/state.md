@@ -1,8 +1,8 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-25**, session 6 (the fabricated-identity fix, the
-> empty and loading states finally looked at, and the clinical UI layout).
+> Last updated: **2026-08-26**, session 7 (the sign-in page and the mark, the
+> user guide, and a sweep of the leftovers).
 
 ---
 
@@ -11,14 +11,20 @@
 **Tier 1 and Tier 2 are complete and deployed.** B2 is cleared: the app is
 live at **https://pulse-track-joe.vercel.app**, building from git, and every
 Definition-of-Done item that needed a deployment has now been run against it.
-Session 5 merged PRs #21–#25; session 6 merged #26–#30.
+Session 5 merged PRs #21–#25; session 6 merged #26–#30; session 7 merged
+#31–#34.
 
 **A2 is cleared** — no record carries a real identity any more (§4b) — the
 empty and loading states have now been *seen*, not merely counted (§1d), and
 the dashboard, register and patient page were rebuilt around a clinical frame
 (§1e) which is **live in production and verified there**.
 
-What remains before submitting is in §9. Nothing is blocked.
+Session 7 rebuilt the **sign-in page** and gave the product a **mark and a real
+favicon** (§1f, live), wrote the **user guide** an evaluator can read before a
+walkthrough call (§1g), and swept the repo's scaffold leftovers.
+
+What remains before submitting is in §9. Nothing is blocked. **`main` is three
+commits behind `dev`** — #34 was merged to `dev` only.
 
 | Phase | Status |
 |---|---|
@@ -35,6 +41,8 @@ What remains before submitting is in §9. Nothing is blocked.
 | 9 · Tier 2 gate | ✅ **Complete.** Import runs from the deployed URL — §1b |
 | 13 · Deploy + CI/CD | ✅ Complete (PRs #22–#24) |
 | 14 · Clinical UI layout | ✅ Complete and live (PRs #29, #30) |
+| 15 · Sign-in page, mark, favicon | ✅ Complete and live (PRs #32, #33) |
+| 16 · User guide + repo sweep | ✅ Complete on `dev` (PR #34) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 | 12 · Tier 3 (conditional) | ⬜ Only if 0–11 done |
 
@@ -115,7 +123,9 @@ Still to do before submitting:
   first thing an evaluator does, on a machine that is not ours, and the one
   check this machine cannot honestly perform on itself.
 - **Re-run the layout checks that the UI rebuild touches** on the live URL as
-  part of the final pass. §1e records what has been measured there already.
+  part of the final pass. §1e and §1f record what has been measured there
+  already — the dashboard, register and patient page after #30, and the
+  sign-in page at five widths after #33.
 
 #### How this section read for two sessions, and why
 
@@ -198,6 +208,59 @@ added, none replaced, and the risk ramp is byte-for-byte identical.
 **Verified on production**, not on a local build: all five pages at 1920 and
 375px, zero horizontal overflow, no console or network errors.
 
+### 1f. The sign-in page, the mark and the favicon (PRs #32, #33, live)
+
+Two facts settled the shape of this before anything was built. The login page
+was **1104px of centred box on an empty field** — #29's diagnosis, one page
+later. And `app/favicon.ico` was **still the `create-next-app` file**,
+untouched since the initial commit, so the live site had been showing the
+Next.js logo in the browser tab for the whole project.
+
+Now: a pulse-trace mark, deliberately short on vertices because a favicon is
+read at 16px; a split page with the product on `--color-deep` — the rail's own
+surface, so signing in and using the app read as one product — beside the form;
+the panel dropped below `lg` with the mark moving above the card, the way the
+rail becomes a bar; and one `<Wordmark/>` serving the rail, the mobile bar and
+the login page in place of four hand-typed copies of two strings.
+
+**The geometry is defined once**, in `lib/brand/mark.ts`. The React component
+and the generated `app/icon.svg` both import it — see D-BRAND-1.
+`app/favicon.ico` is rasterised from that SVG at 16/32/48 by the scratchpad's
+headless Chrome and committed as a binary; `scripts/build-icons.ts` regenerates
+the SVG and its header says how the ICO is redone.
+
+Measured on a production build and then on production itself:
+
+| Check | Result |
+|---|---|
+| Horizontal overflow | **0** at 1920, 1440, 1280, 768 and 375 |
+| Icons served | `/icon.svg` 200 `image/svg+xml`; `/favicon.ico` 200 `image/x-icon` |
+| Icons **decode** | 48×48 and 32×32 in-browser — a favicon that 404s looks identical to one that works |
+| Live `favicon.ico` | byte-identical to the committed blob |
+| Sign-in | still works end to end |
+
+One correction worth keeping: the first cut pinned the panel's text to the left
+edge of a 960px column at 1920 and left a dead middle. **The screenshot said so;
+the overflow measurement did not.**
+
+### 1g. The user guide (PR #34, on `dev`)
+
+`.docs/06-using-pulsetrack.html` and a 16-page PDF: every screen, what happens
+when you click, and the rules the app will not break, across both tiers. It
+exists because the three documents already in `.docs` explain the product, the
+QA plan and the integration, and **none of them answers "what happens when I
+press this button."**
+
+Written from the code, not from memory — the CSV rejection rules, the token
+lifecycle, the band thresholds, the batch sizes and the page counts were each
+read out of the implementation before being written down.
+
+Rendering it found **four defects invisible in the markup**: text bleeding out
+of nine boxes across all three diagrams, a dashed rule 100 units past its
+viewBox, six cards in a four-column grid leaving two empty cells as a bare grey
+block, and a PDF rendering **dark-theme text onto the print stylesheet's white
+page**. See §6e for the two that generalise.
+
 The preview URL could not be checked from here — Vercel deployment protection
 puts previews behind an SSO login, so a preview answers `200` and then redirects
 to a Vercel sign-in. **Preview verification is a human step**; scripted checks
@@ -222,8 +285,9 @@ have to run against a local production build or against production itself.
 | ~~B3~~ | ~~No Resend key~~ | **CLEARED.** Resend is configured and sending — see §4a for the constraint that comes with it. |
 | ~~A1~~ | ~~Rotate the Resend API key~~ | **CLOSED by Joe, session 6** — "not an issue any more". Recorded rather than silently dropped: the key was pasted into a chat transcript, and it was verified never to have reached git history or the client bundle. |
 | ~~A2~~ | ~~Two patient records carry real personal inboxes~~ | **CLEARED, session 6.** Both renamed to fabricated identities and re-pushed to the platform — §4b. |
-| **A3** | **Demo figures no longer match older PR bodies** | Now 10 patients / 16 assessments / 69% / 190 labs. Nothing in the README quotes the old numbers any more, so this is cosmetic — but the live site should look deliberate. |
+| **A3** | **Demo figures no longer match older PR bodies, and drifted again** | Now **10 patients / 16 assessments / 69% / 201 labs / 2 uploads** — the ugly-CSV rows are back in the shared database, imported during a verification run and not restored (D-QA-2 not honoured). Found by accident, in the corner of a screenshot taken for something else. Nothing in the README quotes the old numbers, so this is cosmetic — but the live site should look deliberate. |
 | ~~A4~~ | ~~PR #29 is on `dev`, not production~~ | **CLEARED, session 6.** Promoted in #30 and verified live — §1e. |
+| **A5** | **`main` is three commits behind `dev`** | #34 — the user guide, the charset fix and the scaffold-asset removal — was merged to `dev` only, as asked. Documentation and dead assets, no schema change, so promoting is a merge whenever it is wanted. |
 
 ---
 
@@ -257,12 +321,20 @@ before session 4:  patients=4   assessments=13  labs=10   uploads=1  rate=69%
 after  session 4:  patients=9   assessments=13  labs=190  uploads=1  rate=69%
 after  session 5:  patients=10  assessments=16  labs=190  uploads=1  rate=69%
                    labs: 180 FHIR + 10 CSV · patients: 5 EXTERNAL_SEED + 5 OWNED
+seen   session 7:  patients=10  assessments=16  labs=201  uploads=2  rate=69%
 ```
 
 The session-5 delta is manual testing on the live URL, not the app misbehaving.
 The ugly-CSV import was **restored afterwards** — 11 rows and their upload
 record deleted, back to 190/1 — after first confirming none had been pushed to
 the national platform, where a write cannot be undone (D-QA-2).
+
+**It came back.** Session 7 read 201 labs and two uploads off the live
+dashboard, with `lab-results-ugly.csv` in recent imports: the same 11 rows,
+re-imported by a later verification run and not restored. Nobody was looking
+for it — it was legible in a screenshot taken to check the navigation rail.
+D-QA-2 is only as good as the person remembering it, which is the argument for
+deciding A3 rather than re-cleaning a third time.
 
 **The FHIR-imported rows are not drift** — they are Tier 2 working, they are
 reproducible with one click from `/integrations/fhir`, and an evaluator should
@@ -347,7 +419,14 @@ npm run db:migrate   # prisma migrate dev
 npm run db:deploy    # prisma migrate deploy (production)
 npm run db:seed      # idempotent seed
 npx prisma generate  # regenerate client into lib/generated/prisma
+
+npx tsx scripts/build-icons.ts   # rewrite app/icon.svg from the mark geometry
 ```
+
+Regenerating **`app/favicon.ico`** is a separate, deliberate step: it is
+rasterised from `app/icon.svg` at 16/32/48 by the scratchpad's headless Chrome
+and committed as a binary, because the rasteriser stays out of `package.json`
+(D-QA-1, D-BRAND-2). The script's header says how.
 
 **Before starting a server, check nothing already holds the port.** This cost
 real time in session 3 — see §6b.
@@ -419,6 +498,10 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **Tailwind utility conflicts** | Two utilities for the same property are resolved by **their order in the generated stylesheet**, not the order they appear in `class`. Passing `text-deep-ink` alongside a variant's `text-ink-2` is a coin toss — and it lost, rendering the rail's Sign out near-invisible. Add a variant instead; a variant cannot conflict with itself. |
 | **Grid tracks blow out at 375px** | A CSS grid track sized `auto` takes its minimum from the item's **min-content**, so a card holding a `min-w-[520px]` table drags the whole column past the viewport — 283px of it. A column flexbox does not do this, which is why wrapping cards in a grid regressed a layout that had been clean. Tailwind's numbered `grid-cols-*` are `minmax(0, 1fr)` and cannot: **always name the single-column case**, `grid-cols-1`, not bare `grid`. |
 | **A grid with one child** | `xl:grid-cols-2` leaves a dead half-row when one child renders `null` — which the dashboard does when there are no patients. `repeat(auto-fit, minmax(min(30rem, 100%), 1fr))` collapses the empty track, and the `min()` is what keeps the track from being wider than a phone. |
+| **A file open in Excel blocks `git checkout` and `git pull`** | `unable to unlink … Invalid argument`, then `Device or resource busy`. The working tree sat on a 22-commit-stale `main` for part of session 7 because `.docs/lab-results-ugly.csv` was open. Nothing is wrong with git — close the file and pull. |
+| **`.html` opens nothing on this machine** | The association is `.html → htmlfile → "C:Program FilesInternet Exploreriexplore.exe"`, and IE does not run on Windows 11, so a double-click hands the file to a browser that is not there. The per-user default is Edge; anything going through the classic association misses it. Open with `start msedge "<path>"`. **The `.docs` HTML files are fine** — this is why they looked broken. |
+| **An HTML file with no `<meta charset>`** | Chrome sniffs UTF-8; a browser opening a `file://` URL under a Windows locale is entitled to fall back to windows-1252 and render every em dash as `â€"`. Three of the four `.docs` documents were relying on the guess. **Do not fix it with a doctype** — adding one switches quirks mode to standards mode and can move a layout whose PDF has already been rendered. |
+| **`emulateMediaFeatures` does not survive `emulateMediaType("print")`** | A PDF rendered under a dark OS setting comes out as dark-theme text on the print stylesheet's white page — unreadable, and it looks fine on screen right up until the PDF is opened. Set the stylesheet's own `data-theme="light"` opt-out instead, and assert `getComputedStyle(body).color` before writing the file. |
 | **The Next dev overlay hides the bottom-left corner** | The dev-tools badge sits exactly where the rail's Sign out button is, so every development screenshot showed it covered rather than broken. **Any UI claim about that corner has to come from a production build.** |
 
 ---
@@ -543,6 +626,32 @@ Two lessons on top of the original:
   deploys perfectly happily, which is the entire reason GitHub Actions exists
   here — see §10.
 
+### 6e. Two ways verification lied in session 7, in opposite directions
+
+Both are the same lesson from sessions 3, 5 and 6, and both are worth writing
+out because each arrived wearing new clothes.
+
+**A red probe that lied.** The sign-in probe reported a failure that was not
+real: it read `page.url()` after `waitForNavigation`, but a server action
+redirects **client-side**, so it checked before the redirect landed. The
+credentials were correct all along. Every previous instance in this file is a
+*green* probe passing without reaching the code under test; this is the mirror
+image, and it is more dangerous, because the reflex — "the app is broken" —
+sends you to fix the wrong thing. **A probe's verdict is a claim about the
+probe until its mechanism is understood.** Wait on the pathname changing, not
+on a navigation event.
+
+**A checker that only looked one way.** The document checker compared SVG text
+against *text* and reported clean. Nine labels were bleeding out of their
+boxes. Session 5's checker had the opposite blind spot — it tested text against
+boxes and missed a text-on-text collision — so between the two sessions the
+same figure class has now been wrong in both directions. Adding the missing
+direction found **two more, in a diagram that already looked clean**.
+
+The general form, third session running: **a check that passes tells you only
+about the thing it checks.** When one is written to catch a defect, ask what
+its mirror image would be and write that too.
+
 ---
 
 ## 7. Architecture at a glance
@@ -557,6 +666,11 @@ app/api/fhir/import       pull one seeded MRN        [new, session 4]
 app/(dashboard)/integrations/fhir   the integration page   [new, session 4]
 
 components/shell/nav.tsx  rail + bar navigation, active state [new, session 6]
+components/brand/mark.tsx Mark + Wordmark, both tones      [new, session 7]
+components/auth/brand-panel.tsx  the login page's left half [new, session 7]
+
+app/icon.svg              generated from lib/brand/mark.ts [new, session 7]
+app/favicon.ico           rasterised from app/icon.svg     [new, session 7]
 
 app/error.tsx             public-route boundary        [new, session 3]
 app/(dashboard)/error.tsx in-layout boundary, keeps nav [new, session 3]
@@ -572,7 +686,11 @@ lib/fhir/         systems · pagination · mappers · reconcile   (pure, tested)
 lib/email/        provider abstraction + console/resend adapters
 lib/validation/   zod schemas
 lib/actions/      server actions — every one calls requireClinician()
+lib/brand/        mark geometry — the one definition (D-BRAND-1)
 lib/db.ts         Prisma singleton (server-only), pool tuned for cold starts
+
+scripts/build-icons.ts    writes app/icon.svg from lib/brand/mark.ts
+scripts/vercel-env.sh     pushes .env to Vercel, names only
 
 components/ui/    Button · Field · Input · Select · Card · CardHeader · Alert
                   PageHeader · EmptyState · Skeleton · Badge   — no UI library
@@ -606,6 +724,25 @@ Recorded in `.docs/01-challenge-analysis.md` §16 and now also in the **README's
 - **D-FHIR-5** Rebase `next` links (see §6).
 - **D-QA-1** Verification tooling (`puppeteer-core`) lives in the scratchpad, **never in `package.json`**.
 - **D-QA-2** Restore the demo database after any test that mutates it — its figures are quoted in the README, `state.md` and several PR bodies. *(Honoured since session 5: the ugly-CSV rows and the session-6 scratch database were both removed afterwards. The pre-existing drift is A3.)*
+
+New in session 7:
+
+- **D-BRAND-1** The mark's geometry lives in `lib/brand/mark.ts` and nowhere
+  else. The React component and the generated `app/icon.svg` both import it,
+  because drawing one shape twice in a `.tsx` and an `.svg` is exactly how the
+  FHIR loading skeleton drifted from its own page (#27). `app/favicon.ico` is
+  rasterised from that SVG rather than drawn again.
+- **D-BRAND-2** The favicon rasteriser is the scratchpad's headless Chrome, so
+  the `.ico` is a committed binary rather than a build step. Keeping
+  `puppeteer-core` out of `package.json` (D-QA-1) matters more than making one
+  small binary reproducible from a committed script.
+- **D-DOC-1** A rendered document is verified by **measuring the render** —
+  overflow, text against its box, text against text, shapes against the
+  viewBox, empty grid cells, and clipping at print width — and then by looking
+  at it. Four defects in the user guide were invisible in the markup.
+- **D-DOC-2** The `.docs` HTML files declare `<meta charset="utf-8">` but
+  **not** a doctype. A doctype switches quirks mode to standards mode and can
+  move a layout whose PDF has already been rendered and shipped.
 
 New in session 6:
 
@@ -702,6 +839,10 @@ topology, 30 merged PRs, branches kept after merge.
 | #28 | `dev` → `main` | promotion of #25–#27 |
 | #29 | `feat/clinical-ui-layout` | the rail, the fluid work area, the patient banner, the four tiles, the register columns |
 | #30 | `dev` → `main` | promotion of #29 — the new UI is live |
+| #31 | `docs/session-6` | the session 6 record |
+| #32 | `feat/login-and-brand-mark` | the split sign-in page, the mark, and a favicon that is not the scaffold's |
+| #33 | `dev` → `main` | promotion of #31 and #32 — the new login page is live |
+| #34 | `docs/user-guide` | the user guide + PDF, the charset fix, and the scaffold-asset sweep — **on `dev`, not yet promoted** |
 
 ### The branch flow changed in session 5
 
@@ -717,10 +858,10 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**Tier 1 and Tier 2 are complete, deployed and verified live**, and the new UI
-is live too. Nothing is blocked. Sessions 5 and 6 cleared everything that was
-submission-blocking; what is left is two checks this machine cannot fake, one
-cosmetic decision, and the email.
+**Tier 1 and Tier 2 are complete, deployed and verified live**, and the new UI,
+the sign-in page and the mark are live too. Nothing is blocked. Sessions 5–7
+cleared everything that was submission-blocking; what is left is two checks
+this machine cannot fake, one cosmetic decision, one promotion, and the email.
 
 1. **The fresh-clone dry run** (checklist 9.1). Clone into a clean directory
    and follow the README literally, on a machine that is not this one. The
@@ -730,28 +871,47 @@ cosmetic decision, and the email.
 
 2. **The cold start.** Leave the deployment idle an hour and load `/login`. It
    is the single request an evaluator is guaranteed to make and the one path
-   never observed working end to end (§1b). **Start the clock early** — it costs
-   an hour of waiting, not an hour of work, so kick it off before doing
-   anything else and check back.
+   never observed working end to end (§1b).
+   **Correction to the session 6 plan:** the clock **cannot** run in parallel
+   with other work. Every deploy runs `prisma migrate deploy`, which connects
+   to Neon and wakes the compute, so this has to be **the last thing done,
+   after the final deploy** — not the first.
 
-3. **Decide A3, the demo figures.** Restore to 3/8/88% or accept 10/16/69%.
+3. **Promote #34 to `main`** (A5). The user guide, the charset fix and the
+   scaffold-asset removal are on `dev` only. Documentation and dead assets, no
+   schema change — a `dev → main` PR and a merge.
+
+4. **Decide A3, the demo figures.** Restore, or accept 10/16/201/2 and say so.
    Cosmetic, but do not leave two numbers disagreeing anywhere an evaluator
-   reads.
+   reads — and note the ugly-CSV rows have now come back **twice**, so
+   restoring a third time without changing the habit will not hold.
 
-4. **Write the submission email.** Repo link, live URL, what is built, what is
+5. **Write the submission email.** Repo link, live URL, what is built, what is
    deliberately not, and the things measured rather than claimed — the FHIR
-   import timing, the ugly-CSV outcome, the layout numbers.
+   import timing, the ugly-CSV outcome, the layout numbers. Point at
+   `.docs/06-using-pulsetrack.html` (§1g): it is the document to hand someone
+   before a walkthrough call.
 
-5. **Optional, only if 1–4 are done:** phases D and E of the interface plan —
+6. **Optional, only if 1–5 are done:** phases D and E of the interface plan —
    the density/table pass and chart reference bands. Both are real improvements
    with a poorer ratio than A–C. Phase F (icons) is cut: a new dependency and a
    new licence question the night before a deadline.
 
-6. **Tier 3 stays out of scope** unless 1–4 are all done — its own Definition
+7. **Tier 3 stays out of scope** unless 1–5 are all done — its own Definition
    of Done opens with "Tier 1 and Tier 2 are complete, deployed and QA'd
    first," and the brief warns it evaluates *"judgment, not ambition."*
 
-### Closed this session, do not redo
+### Closed in session 7, do not redo
+
+- ~~The sign-in page and the favicon~~ — done and **live**, §1f.
+- ~~A document explaining how to use the app~~ — done, §1g. On `dev`.
+- ~~The `.docs` HTML files "cannot be opened"~~ — not the files; it is this
+  machine's `.html` → Internet Explorer association. §6. The files were kept:
+  they are the sources the PDFs are rendered from.
+- ~~Scaffold leftovers in `public/`~~ — the five scaffold SVGs are gone.
+  Everything else was checked and is in use.
+
+### Closed in session 6, do not redo
 
 - ~~Fix the two real email addresses (A2)~~ — done, §4b.
 - ~~Rotate the Resend key (A1)~~ — **closed by Joe**, not by a rotation. §3.
