@@ -113,9 +113,15 @@ function isApiError(body: unknown): body is ApiError {
 export function TrajectorySummary({
   patientId,
   configured,
+  problem,
 }: {
   patientId: string;
   configured: boolean;
+  /**
+   * Why the feature is off, when it is off for a reason worth acting on — a
+   * mistyped `AI_PROVIDER` rather than an absent key. Never carries a value.
+   */
+  problem?: string | null;
 }) {
   const [state, setState] = useState<PanelState>({ phase: "idle" });
 
@@ -173,7 +179,10 @@ export function TrajectorySummary({
         {!configured ? (
           <EmptyState
             title="Not configured on this deployment"
-            description="Set AI_PROVIDER and AI_API_KEY to enable the trajectory summary. The rest of the app runs without it."
+            description={
+              problem ??
+              "Set AI_PROVIDER and AI_API_KEY to enable the trajectory summary. The rest of the app runs without it."
+            }
           />
         ) : state.phase === "idle" ? (
           <EmptyState
