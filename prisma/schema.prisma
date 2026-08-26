@@ -122,6 +122,21 @@ model Assessment {
   /// database dump does not hand out working links.
   tokenHash String   @unique
   sentAt    DateTime @default(now())
+
+  /// When a real email provider accepted the invitation for delivery.
+  ///
+  /// Null means nothing was emailed — and that is the common case, not the
+  /// exception. The row is written before delivery is attempted and is kept
+  /// when delivery fails, because the link is still valid and the clinician
+  /// can hand it over; Resend's free tier refuses every recipient but the
+  /// account owner's, so on this deployment almost every send lands there.
+  /// Without this column the table said "Awaiting reply" for an invitation
+  /// that never left the building.
+  ///
+  /// The console adapter does not set it either: it reports `delivered: true`
+  /// so the flow can be exercised with no mail configuration, but nothing was
+  /// actually sent to anyone, and this column records what reached a patient.
+  emailDeliveredAt DateTime?
   /// sentAt + 7 days. Expiry is derived on read rather than swept by a cron.
   expiresAt DateTime
 

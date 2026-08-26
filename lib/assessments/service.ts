@@ -167,24 +167,13 @@ export async function submitAssessment(
 export { bandByLabel, bandTone, type BandTone } from "./bands";
 
 /**
- * The status to show for a stored assessment.
- *
- * Expiry is derived rather than swept by a background job, so a row can still
- * read SENT after its expiry has passed. Deriving it in one place keeps the
- * clinician's table and the patient's page from ever disagreeing.
- *
- * `now` is a parameter, not a call to Date.now(), so this stays pure and can
- * be tested at a boundary.
+ * Status presentation lives in `./status`, which is pure, for the same reason
+ * `./bands` does: this module carries `server-only`, and a two-branch function
+ * over a date has no business being untestable because of it. Re-exported so
+ * every existing call site is unchanged and there is still one definition.
  */
-export function displayStatus(
-  assessment: { status: AssessmentStatus; expiresAt: Date },
-  now: Date,
-): AssessmentStatus {
-  if (
-    assessment.status === AssessmentStatus.SENT &&
-    assessment.expiresAt.getTime() <= now.getTime()
-  ) {
-    return AssessmentStatus.EXPIRED;
-  }
-  return assessment.status;
-}
+export {
+  displayStatus,
+  statusPresentation,
+  type StatusPresentation,
+} from "./status";
