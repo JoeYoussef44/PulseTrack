@@ -185,8 +185,8 @@ function DistributionTooltip({
     <div className="max-w-64 rounded-md border border-rule bg-surface px-3 py-2 shadow-sm">
       <p className="text-xs text-muted">
         {bucket.closed
-          ? `${bucket.from} to ${bucket.to} ${unit}, inclusive`
-          : `${bucket.from} to under ${bucket.to} ${unit}`}
+          ? `${bucket.fromLabel} to ${bucket.toLabel} ${unit}, inclusive`
+          : `${bucket.fromLabel} to under ${bucket.toLabel} ${unit}`}
       </p>
       <p className="text-sm font-semibold text-ink">
         {bucket.count}

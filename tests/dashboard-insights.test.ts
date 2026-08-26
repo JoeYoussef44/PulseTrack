@@ -287,6 +287,16 @@ describe("histogram", () => {
     }
   });
 
+  it("spells each edge the same way in the label and on its own", () => {
+    // The tooltip writes the edges into a sentence rather than a range, and
+    // "5.5 to under 6" beside an axis labelled "5.5–6.0" makes a reader decide
+    // which of two spellings of one number to trust.
+    for (const bucket of histogram([4.0, 9.0], TestCode.HBA1C)) {
+      expect(bucket.label).toBe(`${bucket.fromLabel}–${bucket.toLabel}`);
+      expect(bucket.fromLabel).toMatch(/^\d+\.\d$/);
+    }
+  });
+
   /* -------------------------------------------------- reference alignment -- */
 
   it("anchors the bucket grid at the reference floor, so the floor is an edge", () => {

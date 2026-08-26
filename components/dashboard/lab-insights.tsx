@@ -3,6 +3,8 @@ import { TrendChart } from "@/components/charts/trend-chart";
 import { VolumeChart } from "@/components/charts/volume-chart";
 import { Card, CardHeader, EmptyState } from "@/components/ui";
 
+import { DISPLAY_DECIMALS } from "@/lib/dashboard/insights";
+
 import type {
   MonthPoint,
   TestInsight,
@@ -107,7 +109,7 @@ export function LabInsights({
                 title={`${test.name} — distribution`}
                 description={`${test.resultCount} ${
                   test.resultCount === 1 ? "result" : "results"
-                } on file. Reference range ${test.refLow}–${test.refHigh} ${test.unit}. ${describeLatest(test)}`}
+                } on file. Reference range ${refRange(test)}. ${describeLatest(test)}`}
               />
               <div className="px-2 pt-2 pb-4">
                 <DistributionChart
@@ -187,6 +189,23 @@ function MissingTest({ test }: { test: TestPanel }) {
   );
 }
 
+/**
+ * A reference limit at the measure's own precision.
+ *
+ * HbA1c'''s floor is stored as 4.0 and renders as "4" untouched, beside a
+ * histogram axis that labels the same edge "4.0". A reader should not have to
+ * decide which of two spellings of one number to trust.
+ */
+function limit(value: number, test: TestInsight): string {
+  return `${value.toFixed(DISPLAY_DECIMALS[test.testCode] ?? 1)} ${test.unit}`;
+}
+
+function refRange(test: TestInsight): string {
+  const decimals = DISPLAY_DECIMALS[test.testCode] ?? 1;
+
+  return `${test.refLow.toFixed(decimals)}–${test.refHigh.toFixed(decimals)} ${test.unit}`;
+}
+
 /** "June 2026" — what a monthly point actually covers. */
 function monthLabel(t: number): string {
   // UTC, like every other date formatter here: the month key is built from UTC
@@ -226,7 +245,7 @@ function describeTrend(test: TestPanel): string {
   const allAbove = test.trend.every((p) => p.mean > test.refHigh);
 
   return allAbove
-    ? `${base} Every month sits above the reference ceiling of ${test.refHigh} ${test.unit}, so the reference band is off the bottom of this chart.`
+    ? `${base} Every month sits above the reference ceiling of ${limit(test.refHigh, test)}, so the reference band is off the bottom of this chart.`
     : base;
 }
 
@@ -269,7 +288,7 @@ function distributionLabel(test: TestInsight): string {
   return [
     `Distribution of ${test.name} results in ${test.unit}`,
     `${test.resultCount} results from ${test.patientCount} patients`,
-    `reference range ${test.refLow} to ${test.refHigh} ${test.unit}`,
+    `reference range ${refRange(test)}`,
     `on their latest reading, ${test.withinRangeCount} of ${test.patientCount} patients are within range, ${test.aboveRangeCount} above and ${test.belowRangeCount} below`,
   ].join(", ");
 }

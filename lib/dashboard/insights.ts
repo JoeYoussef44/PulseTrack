@@ -266,6 +266,9 @@ export interface Bucket {
   count: number;
   /** "7.0–7.5" — formatted here so the chart does not reinvent it. */
   label: string;
+  /** The two edges separately, at the same precision as the label. */
+  fromLabel: string;
+  toLabel: string;
   status: BucketStatus;
   /** For a straddling bucket, the reference limit that falls inside it. */
   boundary: number | null;
@@ -365,6 +368,12 @@ export function histogram(values: number[], testCode: TestCode): Bucket[] {
       to,
       count: 0,
       label: `${from.toFixed(decimals)}–${to.toFixed(decimals)}`,
+      // The edges again, separately. The tooltip writes them into a sentence
+      // rather than a range, and reading "5.5 to under 6" beside an axis
+      // labelled "5.5–6.0" is the kind of small disagreement that makes a
+      // reader wonder which number to believe.
+      fromLabel: from.toFixed(decimals),
+      toLabel: to.toFixed(decimals),
       closed: step === lastStep,
       ...classify(from, to, refLow, refHigh),
     });
