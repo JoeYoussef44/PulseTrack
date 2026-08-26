@@ -1,8 +1,9 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-26**, session 8 (Tier 3 — the grounded trajectory
-> summary, built, measured against a real provider, and live).
+> Last updated: **2026-08-26**, session 9 (the assessment record made honest,
+> assessments made readable, and the clinic dashboard given something clinical
+> to say).
 
 ---
 
@@ -26,6 +27,12 @@ walkthrough call (§1g), and swept the repo's scaffold leftovers.
 **Session 8 built Tier 3** — a grounded patient trajectory summary (§1h) —
 which is **merged to `main` and live**. All three tiers are now complete.
 
+**Session 9 answered a question Joe asked and rebuilt three things around the
+answer** (§1i): why patients have assessments nobody sent, what a clinician can
+now read off one, and what a doctor sees on the dashboard. PRs #41 and #42 are
+merged to `dev`. It also removed a real identity that had reappeared in the
+live database and on the national platform (§4c).
+
 What remains before submitting is in §9. Nothing is blocked. `dev` and `main`
 are level on everything functional; `dev` carries the session records.
 
@@ -47,6 +54,8 @@ are level on everything functional; `dev` carries the session records.
 | 15 · Sign-in page, mark, favicon | ✅ Complete and live (PRs #32, #33) |
 | 16 · User guide + repo sweep | ✅ Complete (PR #34) |
 | 12 · Tier 3 — AI trajectory summary | ✅ **Complete and live** (PRs #36, #37) |
+| 17 · Assessment record + review page | ✅ Complete, on `dev` (PR #41) |
+| 18 · Clinic insight dashboard | ✅ Complete, on `dev` (PR #42) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 
 ### Tier 1 against the brief's own six areas
@@ -332,6 +341,56 @@ or any token, asserted in a test against the serialised payload.
 
 ---
 
+### 1i. Session 9 — the assessment record, and the clinic dashboard
+
+Joe asked: *why do some patients have assessments they never submitted or were
+never sent?* The answer turned into three pieces of work.
+
+**The answer.** Exactly three places in the codebase write an assessment, and
+`submitAssessment` is not one of them — it only ever *updates* a row a clinician
+already created. So a patient who never replied should have a row; that matches
+the brief's `sent -> completed | expired` lifecycle. Two things were genuinely
+wrong:
+
+| Cause | What it is |
+|---|---|
+| The seed | `prisma/seed.ts` writes 8 finished rows directly, back-dated to before their own patient record existed |
+| A failed send | `sendAssessment` writes the row, *then* attempts delivery, and keeps the row when delivery fails — so the table read "Awaiting reply" for invitations that never left the building |
+
+The second is the common case here, not the exception: Resend's free tier
+refuses every fabricated recipient (§4a).
+
+**What was built.**
+
+- `Assessment.emailDeliveredAt`, nullable and purely additive. The status column
+  now reads **"Not emailed"** rather than "Awaiting reply" when nothing was
+  delivered. `wasEmailed` draws the distinction the console adapter blurs: it
+  reports `delivered: true` so the flow works with no mail configuration, having
+  contacted nobody.
+- **An assessment is now a page.** `/patients/[id]/assessments/[assessmentId]`
+  shows the eight items and the option the patient chose. It **recomputes the
+  total from the answers on file** and renders a disagreement with the stored
+  total rather than picking one; answers from another instrument are surfaced,
+  not dropped; an assessment under the wrong patient is a 404.
+- **The seed stopped falsifying a chart.** It filled greedily — 3 in q1, 3 in q2
+  until the total ran out — so every patient scoring 17 got `[3,3,3,3,3,2,0,0]`.
+  Invisible while only totals are read, and a lie the moment anything draws a
+  per-question breakdown. `distributeScore` apportions by largest remainder over
+  stable per-item weights. Backfilled against the live database: 8 seeded rows
+  rewritten, the 4 real submissions untouched.
+- **The dashboard grew four clinical panels**: a distribution histogram and a
+  monthly-mean trend per test, monthly collection volume, and a worst-first
+  DSMA-8 item breakdown.
+
+**What the live data now says**, which is the point of the panels: 6 of 8
+patients above range on glucose, **8 of 8 on HbA1c**, 7 of 7 on systolic;
+glucose trending 170 → 97 and HbA1c 7.7 → 6.5 over 13 months; foot checks the
+worst-reported behaviour at 2.09 of 3, hypoglycaemic episodes the best at 1.18.
+
+Tests **299 → 363**.
+
+---
+
 ## 2. Deadline
 
 - Interview: **Thursday 2026-08-27, noon.**
@@ -353,6 +412,7 @@ or any token, asserted in a test against the serialised payload.
 | ~~A4~~ | ~~PR #29 is on `dev`, not production~~ | **CLEARED, session 6.** Promoted in #30 and verified live — §1e. |
 | ~~A5~~ | ~~`main` is three commits behind `dev`~~ | **CLEARED, session 8.** Promoted as #35. |
 | ~~A6~~ | ~~`dev` was 16 commits behind `main`~~ | **CLEARED, session 8.** Tier 3 was merged straight to `main` in #37, bypassing `dev`, so the Preview environment and any new branch would have silently lacked it. `dev` was a clean ancestor and fast-forwarded. **Watch for this again:** the documented flow is feature → `dev` → `main`, and a feature merged directly to `main` leaves `dev` stale without warning. |
+| **A8** | **A real identity reappeared in the live database — now removed** | `MRN-9999` was created during manual testing on 2026-08-26 carrying a real name, inbox, mobile and date of birth, and was **pushed to the shared FHIR server as resource 831**. Cleaned in session 9 — §4c. **This is A2 recurring.** Manual testing on the live site created it; nothing prevents the next one. |
 | **A7** | **Tier 3 on production is unconfirmed** | Summarise was verified on the **preview** deployment. Production reads a *separate* set of Vercel environment variables. If `AI_PROVIDER` / `AI_API_KEY` / `AI_MODEL` were set for Preview only, the live panel reads "not configured on this deployment". One click on any patient at the live URL settles it. |
 
 ---
@@ -392,6 +452,11 @@ after  session 4:  patients=9   assessments=13  labs=190  uploads=1  rate=69%
 after  session 5:  patients=10  assessments=16  labs=190  uploads=1  rate=69%
                    labs: 180 FHIR + 10 CSV · patients: 5 EXTERNAL_SEED + 5 OWNED
 seen   session 7:  patients=10  assessments=16  labs=201  uploads=2  rate=69%
+seen   session 9:  patients=10  assessments=16  labs=201  uploads=5  rate=69%
+                   +1 patient and +1 upload from session-8 testing, both since
+                   removed or accounted for; 5 upload records, 4 of them the
+                   same ugly CSV re-run. 200 of the 201 labs are usable in an
+                   aggregate — see the unit note in §6g.
 ```
 
 The session-5 delta is manual testing on the live URL, not the app misbehaving.
@@ -473,6 +538,35 @@ current version — what any read, search or import returns — is clean.
 Verified against **production**, not inferred: signed in to
 `/patients` on the live URL and grepped the rendered page for `Joe`, `Hassib`,
 `Youssef`, `Test`, `outlook`, `gmail`. All absent.
+
+### 4c. A real identity came back, and was removed again
+
+`MRN-9999` — a real name, a real inbox, a real mobile and a real date of birth —
+was created on the live site during session 8's manual testing and **pushed to
+the shared FHIR server as resource 831**. The repo and the site are public and
+that server is publicly readable.
+
+Removed in session 9, in the order that actually works:
+
+1. Renamed locally to a fabricated identity, contact details cleared. **This has
+   to come first** — the platform copy can only be corrected through
+   `pushPatient`, which needs the local row.
+2. `pushPatient` PUT the fabricated name over resource 831.
+3. Read the current version back and grepped it. Version 2 reads
+   `Zeidan / Rami`, `birthDate 1975-06-04`, no `telecom`, and contains none of
+   `Joe`, `Youssef`, `outlook`, the phone number or the original date of birth.
+4. Deleted the local patient. Assessments, answers and lab results cascaded.
+
+Same permanent caveat as §4b: that server disables DELETE, so version 1 stays in
+`_history`. The current version — what every read, search and import returns —
+is clean. `telecom` was never pushed, so the email and phone never left this
+machine.
+
+**The lesson is that §4b did not stick.** A2 was closed in session 6 and
+reopened by ordinary manual testing eleven days later, and it was found by
+accident while looking at something else. Nothing in the app stops a clinician
+typing a real person into a public demo, and on this project nothing needs to
+except a habit. **Check the register for real identities before submitting.**
 
 ---
 
@@ -576,6 +670,12 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **A model in the `/models` listing may still refuse to serve** | `gemini-2.5-flash` is listed by `GET /v1beta/models` and answers `404` *"no longer available to new users"* on every generate call. The listing is not an availability check. |
 | **Gemini 3.x charges thinking tokens against `max_tokens`** | And thinking expands to fill whatever budget it is given: at a 400-token cap, 396 went to reasoning and 13 to output. `reasoning_effort: "low"` suppressed it on a trivial prompt but **not** on the real one. `reasoning_effort: "none"` and native `thinkingConfig.thinkingBudget: 0` both `400`. |
 | **A truncated completion is the one failure the grounding check cannot catch** | `finish_reason: "length"` returned `"HBA1C (Hemoglobin A1c): 3"` — and `verify.ts` passes it, correctly, because `3` genuinely is one of the patient's figures. Truncation is not fabrication. It needs its own guard, and it is not retried: the budget is identical next time. |
+| **`sr-only` inside a horizontally scrolling container escapes it** | `sr-only` is `position: absolute`, so with no positioned ancestor its containing block is the **initial containing block** — not the `overflow-x-auto` div it is written inside. One screen-reader label in a table header was therefore laid out at the table's full min-width in *document* coordinates and dragged the whole page 260px sideways at 375px. The signature is **`html.scrollWidth` large while `body.scrollWidth` equals the viewport**. Bisect by hiding subtrees; `getBoundingClientRect` alone will not find it, because every ancestor is innocent. |
+| **A `<tr>` does not reliably establish a containing block** | `position: relative` on a table row plus a stretched `::after` on an anchor — the standard "clickable row" trick — does not work in Chrome. The pseudo-element resolves against something further up, so the far side of the row is not a hit target while `getComputedStyle` reports everything correct. Use one real anchor plus an `onClick` on the row. |
+| **A full-page screenshot renders every Recharts surface blank** | It looks exactly like four broken charts, and the dark navigation rail stops halfway down the image as well. Both are the capture resizing the viewport, not the page. **Measure the marks before believing the picture** — `getBoundingClientRect` on `.recharts-bar-rectangle` and the axis tick text — and take a viewport screenshot scrolled to the chart instead. |
+| **A stored unit that is not the canonical one poisons every aggregate** | The importer stores `5.4 mmol/L` against a mg/dL test exactly as reported and flags it, which is right (D-CSV, `.docs/05-ugly-csv-expected-outcomes.md` row 7). Averaging it in with 68 mg/dL readings is adding millimoles to milligrams and moves the clinic mean by an amount nobody can see. **Every clinic-wide figure filters to the canonical unit and states how many rows that dropped.** |
+| **A reference band outside the plotted domain is silently absent** | `TrendChart` shades the reference range — but only where it falls inside the y-domain. Every monthly HbA1c mean sits above the ceiling, so the band is never drawn, and a line trending downward reads as a clinic in range when nothing in it is. The chart is not wrong, it is *silent*. Where the visual channel has nothing to show, the caption has to say it in words. |
+| **A histogram bucket that is clinically sensible can still be useless** | 10 mmHg put the entire register's systolic pressure in three enormous bars. Blood pressure varies over a narrower range than glucose; the bucket width has to suit the measure's spread, not just its units. Draw it and look. |
 | **A mistyped `AI_PROVIDER` used to disable the feature silently** | The lookup missed, `readAiConfig()` returned null, and the panel said "not configured on this deployment" — true, unhelpful, and indistinguishable from setting nothing. `aiConfigProblem()` now names the variable. A wrong value and an absent value are different problems. |
 
 ---
@@ -779,6 +879,28 @@ The general form, and it is the same lesson as §6e wearing new clothes: **a
 guard catches the failure it was designed for and is blind to the one beside
 it.** Having built a number checker, the question to ask was "what wrong output
 contains only right numbers" — and the answer was sitting in `finish_reason`.
+
+### 6g. Two more ways a probe lied, both in one session
+
+Same lesson as §6a and §6e, arriving in two new costumes. Both reported a
+working feature as broken.
+
+**It clicked outside the viewport.** The row-click test computed the row's
+centre at `y = 1095` and clicked it — in a window 900px tall. Nothing was
+clicked, `elementFromPoint` returned null, and the probe reported the feature
+dead. Scroll the target into view before taking a coordinate.
+
+**It clicked a different card.** Fixed the first problem, the probe took its `x`
+from the row's own `getBoundingClientRect().right`. A table inside
+`overflow-x-auto` has a rect at its **full min-width**, which extends past the
+visible scroller and — in a two-column grid — geometrically overlaps the card in
+the next column. The click landed on the neighbouring card's empty state. Clamp
+any coordinate to the intersection of the element and its scroll container.
+
+The general form, now recorded for the fourth session running: **a probe's
+verdict is a claim about the probe until its mechanism is understood.** The red
+ones are more dangerous than the green ones, because the reflex is to go and fix
+code that was never broken.
 
 ---
 
@@ -1026,12 +1148,20 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**All three tiers are complete, deployed and live.** Tier 3 shipped in session 8
-(§1h) and is on `main`. Nothing is blocked. What remains is one check this
-machine cannot fake, one decision, the email, and a clock that has to run last.
+**All three tiers are complete and live, and session 9's two PRs are on `dev`
+but not yet on `main`.** Nothing is blocked. What remains is one promotion, one
+check this machine cannot fake, one decision, the email, and a clock that has to
+run last.
 
 Ordered. The critical path is item 2, because only a human can do it, and item 6,
 because it cannot overlap with anything.
+
+0. **Promote `dev` → `main` now, and again at the end.** PRs #41 and #42 are
+   merged to `dev` and verified on a local production build, but production is
+   still serving the session-8 code. The migration they carry —
+   `Assessment.emailDeliveredAt` — is **purely additive and already applied** to
+   the shared database, so production running the previous code against it is
+   safe and always was. Item 7 repeats this once the session records land.
 
 1. **Confirm Tier 3 on production** (A7) — 5 minutes. Summarise was verified on
    the **preview** deployment; production reads a *separate* set of Vercel
@@ -1085,6 +1215,18 @@ because it cannot overlap with anything.
 
 7. **Promote `dev` → `main`** once the session records land, so the published
    docs match the deployed code.
+
+### Closed in session 9, do not redo
+
+- ~~"Why do patients have assessments nobody sent?"~~ — answered and acted on.
+  §1i. Three write sites, grep-verified; `submitAssessment` is not one of them.
+- ~~The status column claimed an invitation was sent when delivery failed~~ —
+  `emailDeliveredAt`, PR #41.
+- ~~An assessment's answers were unreadable~~ — it is a page now, PR #41.
+- ~~The seed's greedy answer fill~~ — apportioned and backfilled, PR #41.
+- ~~The dashboard said nothing clinical~~ — four panels, PR #42.
+- ~~A real identity on `MRN-9999`, local and on the platform~~ — §4c. **Check
+  the register again before submitting; this is the second recurrence.**
 
 ### Closed in session 8, do not redo
 

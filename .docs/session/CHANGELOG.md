@@ -8,6 +8,133 @@ reconstruct it from diffs.
 
 ---
 
+## Session 9 — 2026-08-26 (Wed) — one question, and the three things it turned out to be
+
+Two merged PRs (#41, #42). Tests 299 → 363. It started with Joe asking why some
+patients have assessments they never submitted or were never sent.
+
+### The answer, and why it was worth chasing
+
+Three places in the codebase can write an assessment, grep-verified: the seed,
+the clinician's **Send assessment**, and the patient's submission. The third
+**never creates a row** — it only updates one a clinician already made. So a
+patient who never replied *should* have a row, and that matches the brief's own
+`sent -> completed | expired` lifecycle. The question had a reassuring answer.
+
+Two things underneath it did not.
+
+**The seed writes eight finished assessments directly**, back-dated to before
+their own patient record existed — Jane Doe's first is "sent" 2026-05-02 on a
+record created 2026-08-24. Deliberate demo data, and nothing on screen said so.
+
+**A row said "Awaiting reply" for invitations that never left the building.**
+`sendAssessment` creates the row, *then* attempts delivery, and deliberately
+keeps the row when delivery fails — the link is valid and the clinician can hand
+it over. Right. What was missing is that nothing recorded the difference, and on
+this deployment the failing case is the common one: Resend's free tier refuses
+every fabricated recipient. So the table asserted a send that had not happened,
+and the clinician's next action differs between the two states.
+
+`emailDeliveredAt` fixes it, and `wasEmailed` draws the distinction the console
+adapter blurs: it reports `delivered: true` so the flow works with no mail
+configuration at all, having contacted nobody. Right answer to its own question,
+wrong thing to write into a column a clinician reads as "the patient has this".
+
+### An assessment is a page now
+
+A score and a band is the right summary and a poor answer to what a nurse asks
+before a consultation: *what did they actually say?* 14 can be one bad item and
+seven good ones, or eight mediocre ones, and the conversation differs.
+
+The review page recomputes the total from the answers on file and **renders a
+disagreement with the stored total rather than picking one**. The two are
+written in a single transaction today, so this can only fire after a backfill or
+a version change — which is exactly when nobody would notice, because the
+failure is silent: the header says 11 and the eight rows below it add to 14.
+
+### The seed was falsifying a chart nobody had drawn yet
+
+It filled greedily — 3 in q1, 3 in q2, until the total ran out — so every
+patient scoring 17 got `[3,3,3,3,3,2,0,0]`. Invisible while the only thing read
+is the total. The moment the dashboard grew a per-question breakdown it became a
+staircase produced by a `for` loop, and a clinician reading it would conclude the
+practice was failing at medication adherence and flawless at foot checks.
+
+**The general form is worth keeping: data that is only ever aggregated one way
+can be wrong in every other way without anyone finding out.** The fix
+apportions by largest remainder over stable per-item weights, and the seed now
+rewrites answers rather than `skipDuplicates` — which was idempotent in the weak
+sense and meant a demo database could never be corrected while a fresh clone got
+the new behaviour.
+
+### The dashboard, and the unit that would have poisoned it
+
+Four panels: a distribution histogram and a monthly-mean trend per test, monthly
+collection volume, and a worst-first DSMA-8 item breakdown.
+
+The finding worth carrying beyond this project came from looking at the data
+before charting it. One stored row is `5.4 mmol/L` against a mg/dL test. The
+importer stores it exactly as reported and flags it rather than converting —
+deliberate, and right, because relabelling it invents a glucose reading wrong by
+a factor of eighteen. **Correct on import and a trap on aggregation**: averaging
+it in with 68 mg/dL readings is adding millimoles to milligrams, and the clinic
+mean moves by an amount nobody can see. Every figure now filters to the canonical
+unit and the page says how many rows that dropped.
+
+Same shape as the truncation finding in session 8: a decision that is right at
+one layer becomes a defect at the next, and neither layer is wrong on its own.
+
+### Four defects the browser found and the suite could not
+
+- **`sr-only` escapes a horizontally scrolling container.** It is
+  `position: absolute`, so with no positioned ancestor its containing block is
+  the initial containing block — not the `overflow-x-auto` div it sits inside.
+  One screen-reader label dragged the whole page 260px sideways at 375px. The
+  signature is `html.scrollWidth` large while `body.scrollWidth` matches the
+  viewport, and no ancestor looks guilty.
+- **A `<tr>` does not reliably establish a containing block**, so the standard
+  "clickable row" trick — `relative` on the row, stretched `::after` on the
+  anchor — silently does not work. Every computed style reads correct.
+- **The reference band was invisible on two of three trend charts** because
+  every monthly mean sits above the ceiling, putting the band outside the
+  plotted domain. The chart was not wrong, it was *silent*, and a downward line
+  read as a clinic in range when nothing in it is.
+- **10 mmHg put the entire register's blood pressure in three bars.** A bucket
+  width can be clinically sensible and still useless.
+
+### Two more ways a probe lied
+
+Fourth session running. Both reported a working feature as broken, which is the
+dangerous direction — the reflex is to go and fix code that was never broken.
+One clicked `y = 1095` in a 900px window. The other, after that was fixed, took
+its `x` from a row's `getBoundingClientRect().right` — a table inside a scroller
+has a rect at its full min-width, which overlaps the card in the next grid
+column, so the click landed on a different card entirely.
+
+And a third, in the opposite direction: **a full-page screenshot renders every
+Recharts surface blank.** It looks exactly like four broken charts. Measuring the
+marks showed 34 bar rectangles and 39 line dots with real geometry the whole
+time. The artifact was the capture.
+
+### A real identity was back on a public server
+
+`MRN-9999` — real name, real inbox, real mobile, real date of birth — created on
+the live site during session 8's testing and **pushed to the shared FHIR server
+as resource 831**. Found by accident while querying assessments for something
+else.
+
+Cleaned in the only order that works: rename locally first, because the platform
+copy can only be corrected through `pushPatient`, which needs the local row; then
+PUT; then verify the current version by reading it back; only then delete. Same
+permanent caveat as session 6 — DELETE is disabled, so version 1 stays in
+`_history`.
+
+**A2 was closed in session 6 and reopened by ordinary manual testing eleven days
+later.** Nothing in the app prevents it and, for this project, nothing needs to
+except a habit. The register should be checked once more before submitting.
+
+---
+
 ## Session 8 — 2026-08-26 (Wed, submission day) — Tier 3, and three things only a live probe could find
 
 Four merged PRs (#35–#38). **Tier 3 is built, measured and live**, so all three
