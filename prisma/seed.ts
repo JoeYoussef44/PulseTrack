@@ -8,6 +8,7 @@ import { AssessmentStatus, Sex } from "../lib/generated/prisma/enums";
 import { QUESTION_IDS } from "../lib/assessments/definition";
 import { bandForScore } from "../lib/assessments/scoring";
 import { hashToken } from "../lib/assessments/token";
+import { distributeScore } from "./demo-answers";
 
 /**
  * Idempotent seed. Safe to run repeatedly — every write is an upsert keyed on
@@ -143,20 +144,6 @@ const DEMO_ASSESSMENTS: Array<{
   { mrn: "MRN-1003", label: "c2", completedOn: "2026-06-24", totalScore: 20 },
 ];
 
-/** Answers that genuinely sum to `total`, so the stored score is not a fiction. */
-function answersTotalling(total: number): number[] {
-  const answers: number[] = [];
-  let remaining = total;
-
-  for (let i = 0; i < QUESTION_IDS.length; i += 1) {
-    const value = Math.min(3, Math.max(0, remaining));
-    answers.push(value);
-    remaining -= value;
-  }
-
-  return answers;
-}
-
 async function seedAssessments() {
   for (const a of DEMO_ASSESSMENTS) {
     const patient = await prisma.patient.findUnique({
@@ -202,17 +189,34 @@ async function seedAssessments() {
     });
 
     if (completed) {
-      const scores = answersTotalling(a.totalScore!);
+      // Apportioned across the eight items rather than filled greedily, and
+      // genuinely summing to the stored total — see ./demo-answers.
+      const scores = distributeScore(a.totalScore!);
 
-      // The unique (assessmentId, questionId) index makes this idempotent.
-      await prisma.assessmentAnswer.createMany({
-        data: QUESTION_IDS.map((questionId, i) => ({
-          assessmentId: assessment.id,
-          questionId,
-          score: scores[i],
-        })),
-        skipDuplicates: true,
-      });
+      // Rewritten, not inserted-if-absent.
+      //
+      // `skipDuplicates` was idempotent in the weak sense — a second run added
+      // nothing — but it also meant answers written by an earlier version of
+      // this seed could never be corrected, so a demo database kept the old
+      // greedy distribution forever while a fresh clone got the new one. Two
+      // installations of the same seed disagreeing about their own data is
+      // worse than rewriting eight rows.
+      //
+      // The blast radius is exactly these rows: `tokenHash` is derived from a
+      // `pulsetrack-seed:` label, so nothing a real patient submitted can be
+      // reached from here.
+      await prisma.$transaction([
+        prisma.assessmentAnswer.deleteMany({
+          where: { assessmentId: assessment.id },
+        }),
+        prisma.assessmentAnswer.createMany({
+          data: QUESTION_IDS.map((questionId, i) => ({
+            assessmentId: assessment.id,
+            questionId,
+            score: scores[i],
+          })),
+        }),
+      ]);
     }
 
     console.log(

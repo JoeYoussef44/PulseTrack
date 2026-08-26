@@ -10,6 +10,7 @@ import {
 } from "@/lib/assessments/definition";
 import { assessmentUrl, issueToken } from "@/lib/assessments/token";
 import { assessmentInviteEmail } from "@/lib/email/assessment-invite";
+import { wasEmailed } from "@/lib/email/delivery";
 import { getEmailProvider } from "@/lib/email/email-service";
 
 export interface SendAssessmentState {
@@ -63,7 +64,7 @@ export async function sendAssessment(
 
   const { rawToken, tokenHash, expiresAt } = issueToken();
 
-  await prisma.assessment.create({
+  const assessment = await prisma.assessment.create({
     data: {
       patientId: patient.id,
       questionnaireId: QUESTIONNAIRE_ID,
@@ -71,6 +72,7 @@ export async function sendAssessment(
       tokenHash,
       expiresAt,
     },
+    select: { id: true },
   });
 
   const url = assessmentUrl(rawToken, appBaseUrl());
@@ -87,6 +89,21 @@ export async function sendAssessment(
 
   // A failed send is surfaced rather than swallowed. The assessment row stays
   // either way: the link is valid, and the clinician can still deliver it.
+  //
+  // But the row must not go on claiming an invitation was sent when none was.
+  // Recording the outcome is what lets the clinician's table separate "emailed,
+  // waiting on the patient" from "nothing was delivered, hand over the link" —
+  // two states that had been rendering identically as "Awaiting reply".
+  //
+  // The console adapter reports delivered so the flow works with no mail
+  // configuration at all, but it contacted nobody, so it does not count here.
+  if (wasEmailed(result)) {
+    await prisma.assessment.update({
+      where: { id: assessment.id },
+      data: { emailDeliveredAt: new Date() },
+    });
+  }
+
   revalidatePath(`/patients/${patient.id}`);
 
   return {

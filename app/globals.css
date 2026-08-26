@@ -38,6 +38,23 @@
      made a chart frame read as another table border. */
   --color-grid: #e9eeec;
 
+  /* The DSMA-8 response ramp: never -> nearly every day.
+
+     Ordinal, so a sequential ramp rather than four categorical hues — the four
+     options are a scale, and giving them four identities would say they are
+     four unrelated things. One hue, light to dark, in the accent family.
+
+     Stepped by measurement, not by eye. Checked against the ordinal rules:
+     lightness monotone, adjacent ΔL >= 0.06 so no two steps blur together, and
+     the pale end at 2.06:1 against the surface so the lightest segment still
+     reads as a mark rather than as background. The obvious ramp — starting from
+     --color-accent-soft — fails that last one at 1.33:1, which is why the light
+     end here is darker than it first wants to be. */
+  --color-scale-1: #8fbcc7;
+  --color-scale-2: #5698a7;
+  --color-scale-3: #257183;
+  --color-scale-4: #0a5a6b;
+
   /* Risk bands, from questionnaire-dsma8.json */
   --color-band-low: #2f7d53;
   --color-band-low-soft: #e3f0e8;

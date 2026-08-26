@@ -1,5 +1,7 @@
 import "server-only";
 
+import { CONSOLE_PROVIDER } from "./delivery";
+
 /**
  * Email provider abstraction.
  *
@@ -39,7 +41,7 @@ export interface EmailProvider {
  * that URL is a live credential and logs are not a safe place for it.
  */
 class ConsoleEmailProvider implements EmailProvider {
-  readonly name = "console";
+  readonly name = CONSOLE_PROVIDER;
 
   async send(message: EmailMessage): Promise<EmailResult> {
     console.info(
@@ -130,5 +132,5 @@ export function getEmailProvider(): EmailProvider {
 
 /** True when a real provider is configured, for honest UI messaging. */
 export function isRealEmailConfigured(): boolean {
-  return getEmailProvider().name !== "console";
+  return getEmailProvider().name !== CONSOLE_PROVIDER;
 }
