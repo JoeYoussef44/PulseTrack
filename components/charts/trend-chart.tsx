@@ -32,6 +32,18 @@ export interface TrendPoint {
   t: number;
   value: number;
   date: string;
+  /**
+   * Tooltip heading, when the raw date string is not the right one to show. A
+   * clinic point covers a whole month, so it reads "June 2026" rather than the
+   * first of the month, which would suggest a reading taken that day.
+   */
+  heading?: string;
+  /**
+   * Context lines under the value. An aggregate needs them: a mean of one
+   * patient and a mean of thirty look identical on a line, and the difference
+   * is the whole question of how much to trust the point.
+   */
+  detail?: Array<{ label: string; value: string }>;
 }
 
 export interface TrendChartProps {
@@ -44,16 +56,30 @@ export interface TrendChartProps {
   refHigh?: number | null;
   /** Accessible description, since the marks alone are not a label. */
   label: string;
+  /**
+   * Whether a tick names a day or a month.
+   *
+   * A monthly series formatted by day reads "1 Jun, 1 Jul, 1 Aug" — three
+   * identical-looking labels whose leading 1 is noise, and which invite the
+   * reading that something happened on the first. Months also need a wider tick
+   * gap: "Jun 2026" is nearly twice the width of "1 Jun", so the density that
+   * fits one collides in the other, and it collides first on a phone.
+   */
+  tickFormat?: "day" | "month";
 }
 
-function formatTick(t: number): string {
-  // UTC throughout: the dates are stored as plain calendar dates, and a local
-  // formatter would render 2026-05-02 as 1 May for anyone west of Greenwich.
-  return new Date(t).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
+// UTC throughout: the dates are stored as plain calendar dates, and a local
+// formatter would render 2026-05-02 as 1 May for anyone west of Greenwich.
+const TICK_FORMAT = {
+  day: { day: "numeric", month: "short", timeZone: "UTC" },
+  month: { month: "short", year: "numeric", timeZone: "UTC" },
+} satisfies Record<string, Intl.DateTimeFormatOptions>;
+
+/** Enough room for the widest label each format produces, plus a gutter. */
+const TICK_GAP = { day: 24, month: 44 };
+
+function formatTick(t: number, format: "day" | "month"): string {
+  return new Date(t).toLocaleDateString("en-GB", TICK_FORMAT[format]);
 }
 
 export function TrendChart({
@@ -63,6 +89,7 @@ export function TrendChart({
   refLow,
   refHigh,
   label,
+  tickFormat = "day",
 }: TrendChartProps) {
   const xDomain = timeDomain(points);
 
@@ -113,11 +140,11 @@ export function TrendChart({
             type="number"
             scale="time"
             domain={xDomain}
-            tickFormatter={formatTick}
+            tickFormatter={(t: number) => formatTick(t, tickFormat)}
             tick={{ fill: "var(--color-muted)", fontSize: 11 }}
             tickMargin={8}
             stroke="var(--color-rule)"
-            minTickGap={24}
+            minTickGap={TICK_GAP[tickFormat]}
           />
 
           <YAxis
@@ -217,11 +244,26 @@ function TrendTooltip({
 
   return (
     <div className="rounded-md border border-rule bg-surface px-3 py-2 shadow-sm">
-      <p className="text-xs text-muted">{point.date}</p>
+      <p className="text-xs text-muted">{point.heading ?? point.date}</p>
       <p className="text-sm font-semibold text-ink">
         {point.value}
         <span className="ml-1 font-normal text-ink-2">{unit}</span>
       </p>
+
+      {/* The support behind an aggregate, when the point is one. `text-ink-2`
+          rather than `text-muted`: this is the half of the tooltip that says
+          whether to believe the number above it, and muted grey on white is
+          the wrong weight for that. */}
+      {point.detail?.length ? (
+        <dl className="mt-1.5 flex flex-col gap-0.5 border-t border-rule pt-1.5 text-xs text-ink-2">
+          {point.detail.map((row) => (
+            <div key={row.label} className="flex gap-3">
+              <dt className="grow">{row.label}</dt>
+              <dd className="font-medium tabular-nums">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </div>
   );
 }
