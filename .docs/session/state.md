@@ -29,12 +29,18 @@ which is **merged to `main` and live**. All three tiers are now complete.
 
 **Session 9 answered a question Joe asked and rebuilt three things around the
 answer** (§1i): why patients have assessments nobody sent, what a clinician can
-now read off one, and what a doctor sees on the dashboard. PRs #41 and #42 are
-merged to `dev`. It also removed a real identity that had reappeared in the
+now read off one, and what a doctor sees on the dashboard. PRs #41, #42 and #43
+are all merged to `dev`, so the session record is in the repo rather than
+pending. It also removed a real identity that had reappeared in the
 live database and on the national platform (§4c).
 
-What remains before submitting is in §9. Nothing is blocked. `dev` and `main`
-are level on everything functional; `dev` carries the session records.
+What remains before submitting is in §9. Nothing is blocked.
+
+**`dev` and `main` are no longer level.** That sentence was true through session
+8 and is not now: `dev` is **11 commits ahead**, and those commits are
+functional, not documentation. Production still serves the session-8 code, so
+none of §1i is on the live URL yet. Promoting is §9 item 0, and Joe is doing it
+himself.
 
 | Phase | Status |
 |---|---|
@@ -56,6 +62,7 @@ are level on everything functional; `dev` carries the session records.
 | 12 · Tier 3 — AI trajectory summary | ✅ **Complete and live** (PRs #36, #37) |
 | 17 · Assessment record + review page | ✅ Complete, on `dev` (PR #41) |
 | 18 · Clinic insight dashboard | ✅ Complete, on `dev` (PR #42) |
+| 19 · Session 9 record | ✅ Complete, on `dev` (PR #43) |
 | 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
 
 ### Tier 1 against the brief's own six areas
@@ -382,7 +389,9 @@ refuses every fabricated recipient (§4a).
   monthly-mean trend per test, monthly collection volume, and a worst-first
   DSMA-8 item breakdown.
 
-**What the live data now says**, which is the point of the panels: 6 of 8
+**What the panels say about the real register** — read off a local production
+build against the shared Neon database, which is the same data production
+serves, though the panels themselves are not on the live URL yet: 6 of 8
 patients above range on glucose, **8 of 8 on HbA1c**, 7 of 7 on systolic;
 glucose trending 170 → 97 and HbA1c 7.7 → 6.5 over 13 months; foot checks the
 worst-reported behaviour at 2.09 of 3, hypoglycaemic episodes the best at 1.18.
@@ -1148,20 +1157,32 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**All three tiers are complete and live, and session 9's two PRs are on `dev`
-but not yet on `main`.** Nothing is blocked. What remains is one promotion, one
-check this machine cannot fake, one decision, the email, and a clock that has to
-run last.
+**All three tiers are complete and live. Session 9's three PRs (#41, #42, #43)
+are merged to `dev`, and `dev` is 11 commits ahead of `main`** — production is
+still serving the session-8 code. Nothing is blocked. What remains is one
+promotion, one check this machine cannot fake, one decision, the email, and a
+clock that has to run last.
 
 Ordered. The critical path is item 2, because only a human can do it, and item 6,
 because it cannot overlap with anything.
 
-0. **Promote `dev` → `main` now, and again at the end.** PRs #41 and #42 are
-   merged to `dev` and verified on a local production build, but production is
-   still serving the session-8 code. The migration they carry —
-   `Assessment.emailDeliveredAt` — is **purely additive and already applied** to
-   the shared database, so production running the previous code against it is
-   safe and always was. Item 7 repeats this once the session records land.
+0. **Promote `dev` → `main`. Joe is doing this himself** — asked at the end of
+   session 9 and answered "hold, I'll promote myself", so this is not waiting on
+   an agent and should not be done for him unasked.
+
+   The code and the record are both on `dev` already, so this is now a single
+   promotion rather than the two the list used to carry. The migration it
+   brings — `Assessment.emailDeliveredAt` — is **purely additive and already
+   applied** to the shared database, so production has been safe running the
+   previous code against it all along.
+
+   ```bash
+   gh pr create --base main --head dev
+   gh pr merge <n> --merge
+   ```
+
+   **Do this before item 6, not after.** Every deploy runs `prisma migrate
+   deploy`, which wakes Neon and resets the cold-start clock to zero.
 
 1. **Confirm Tier 3 on production** (A7) — 5 minutes. Summarise was verified on
    the **preview** deployment; production reads a *separate* set of Vercel
@@ -1213,8 +1234,9 @@ because it cannot overlap with anything.
    redeploy, and wait another hour. That re-verification cost is the argument
    for starting the wait no later than early evening.
 
-7. **Promote `dev` → `main`** once the session records land, so the published
-   docs match the deployed code.
+7. *(Was a second promotion, once the session records landed. They landed in
+   #43 before the session ended, so item 0 is the only one left — unless a
+   further session adds commits to `dev` after the production promotion.)*
 
 ### Closed in session 9, do not redo
 
