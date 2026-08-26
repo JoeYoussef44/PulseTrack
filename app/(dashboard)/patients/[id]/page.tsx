@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AssessmentRow } from "@/components/assessments/assessment-row";
 import { SendAssessment } from "@/components/assessments/send-assessment";
 import { LabTrends, ScoreTrend } from "@/components/charts/patient-trends";
 import { DeletePatient } from "@/components/patients/delete-patient";
@@ -16,7 +17,12 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { aiConfigProblem, isAiConfigured } from "@/lib/ai/config";
-import { bandTone, displayStatus } from "@/lib/assessments/service";
+import { SCORE_MAX } from "@/lib/assessments/definition";
+import {
+  bandTone,
+  displayStatus,
+  statusPresentation,
+} from "@/lib/assessments/service";
 import { requireClinician } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { toLabSeries, toScoreSeries } from "@/lib/labs/series";
@@ -59,6 +65,7 @@ export default async function PatientDetailPage({
           status: true,
           sentAt: true,
           expiresAt: true,
+          emailDeliveredAt: true,
           completedAt: true,
           totalScore: true,
           riskBand: true,
@@ -172,7 +179,7 @@ export default async function PatientDetailPage({
         <Card>
           <CardHeader
             title="Assessments"
-            description="DSMA-8 self-assessment history"
+            description="DSMA-8 self-assessment history. Open a row to read the patient's answers."
             action={
               <SendAssessment
                 patientId={patient.id}
@@ -187,67 +194,72 @@ export default async function PatientDetailPage({
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
+              <table className="w-full min-w-[30rem] text-sm">
                 <thead>
                   <tr className="border-b border-rule text-left">
                     {["Sent", "Status", "Completed", "Score", "Risk band"].map(
                       (h) => (
                         <th
                           key={h}
-                          className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                          scope="col"
+                          className="px-4 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
                         >
                           {h}
                         </th>
                       ),
                     )}
+
                   </tr>
                 </thead>
                 <tbody>
                   {assessments.map((a) => {
-                    const status = a.displayStatus;
+                    const presented = statusPresentation(
+                      a.displayStatus,
+                      a.emailDeliveredAt,
+                    );
 
                     return (
-                      <tr
+                      // One anchor in the first cell is the navigation; the
+                      // row wrapper adds clicking anywhere as a convenience on
+                      // top of it. The CSS-only version — a stretched
+                      // `::after` on the anchor — was built first and measured
+                      // not to work: a table row does not reliably establish a
+                      // containing block, so the far side of the row was not a
+                      // hit target. See components/assessments/assessment-row.
+                      <AssessmentRow
                         key={a.id}
-                        className="border-b border-rule last:border-0"
+                        href={`/patients/${patient.id}/assessments/${a.id}`}
+                        className="cursor-pointer border-b border-rule transition-colors last:border-0 hover:bg-subtle"
                       >
-                        <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
-                          {toIsoDate(a.sentAt)}
-                        </td>
-                        <td className="px-5 py-3">
-                          <Badge
-                            tone={
-                              status === "COMPLETED"
-                                ? "low"
-                                : status === "EXPIRED"
-                                  ? "neutral"
-                                  : "accent"
-                            }
+                        <td className="tabular px-4 py-3 whitespace-nowrap text-ink-2">
+                          <Link
+                            href={`/patients/${patient.id}/assessments/${a.id}`}
+                            aria-label={`Open the assessment sent ${toIsoDate(a.sentAt)} — ${presented.label}`}
+                            className="hover:text-ink hover:underline"
                           >
-                            {status === "COMPLETED"
-                              ? "Completed"
-                              : status === "EXPIRED"
-                                ? "Expired"
-                                : "Awaiting reply"}
-                          </Badge>
+                            {toIsoDate(a.sentAt)}
+                          </Link>
                         </td>
-                        <td className="tabular px-5 py-3 whitespace-nowrap text-ink-2">
+                        <td className="px-4 py-3">
+                          <Badge tone={presented.tone}>{presented.label}</Badge>
+                        </td>
+                        <td className="tabular px-4 py-3 whitespace-nowrap text-ink-2">
                           {a.completedAt ? toIsoDate(a.completedAt) : "—"}
                         </td>
-                        <td className="tabular px-5 py-3 font-mono whitespace-nowrap text-ink">
+                        <td className="tabular px-4 py-3 font-mono whitespace-nowrap text-ink">
                           {a.totalScore ?? "—"}
                           {a.totalScore !== null ? (
-                            <span className="text-muted"> / 24</span>
+                            <span className="text-muted"> / {SCORE_MAX}</span>
                           ) : null}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-4 py-3">
                           {a.riskBand ? (
                             <Badge tone={bandTone(a.riskBand)}>{a.riskBand}</Badge>
                           ) : (
                             <span className="text-muted">—</span>
                           )}
                         </td>
-                      </tr>
+                      </AssessmentRow>
                     );
                   })}
                 </tbody>
@@ -276,7 +288,7 @@ export default async function PatientDetailPage({
                         <th
                           key={h}
                           scope="col"
-                          className="px-5 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
+                          className="px-4 py-3 font-mono text-[10px] tracking-[0.1em] text-muted uppercase"
                         >
                           {h}
                         </th>
