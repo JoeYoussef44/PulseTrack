@@ -20,6 +20,7 @@ Built as a timed engineering challenge for **Capadev**.
 - [Data model (ERD)](#data-model-erd)
 - [How the three core flows work](#how-the-three-core-flows-work)
 - [FHIR integration (Tier 2)](#fhir-integration-tier-2)
+- [AI trajectory summary (Tier 3)](#ai-trajectory-summary-tier-3)
 - [Security](#security)
 - [Testing](#testing)
 - [Deployment and CI/CD](#deployment-and-cicd)
@@ -78,11 +79,18 @@ Fill in `.env`:
 | `FHIR_BASE_URL` | — | The national platform, e.g. `https://fhir-challenge.vihagent.net/fhir` |
 | `FHIR_CANDIDATE_ID` | — | Our organisation tag on that server. Not a secret |
 | `FHIR_API_KEY` | — | **Secret.** Never `NEXT_PUBLIC_`, never logged |
-| `AI_*` | — | Tier 3 only; unused today |
+| `AI_PROVIDER` | — | `gemini` (default) or `groq`. Tier 3 |
+| `AI_API_KEY` | — | **Secret.** A free key — no card. Tier 3 |
+| `AI_BASE_URL`, `AI_MODEL` | — | Optional overrides; defaults are set per provider |
 
 Leave the three `FHIR_` variables empty and everything in Tier 1 still works:
 the integration page says which are missing and the rest of the app is
 unaffected. Fill them in and the National platform page becomes live.
+
+Leave `AI_API_KEY` empty and the same is true of Tier 3: the trajectory panel
+on a patient page says the feature is not configured on this deployment, and
+nothing else changes. A key from
+[Google AI Studio](https://aistudio.google.com/apikey) turns it on.
 
 ### 4. Migrate and seed
 
@@ -588,6 +596,159 @@ Seeded patients are marked `EXTERNAL_SEED` and never written to at all.
 
 ---
 
+## AI trajectory summary (Tier 3)
+
+One feature: a **Summarise** button on a patient page that writes three to five
+sentences about what that patient's recorded data shows, next to the figures it
+was written from.
+
+The brief says this tier evaluates *"judgment, not ambition"* and asks four
+questions. This section answers them in order.
+
+### Is it grounded in the real data?
+
+Yes, and in a stronger sense than "the model was given the records".
+
+The obvious build is to hand the model the patient's rows and ask what it sees.
+That asks a language model to do arithmetic and to decide what is clinically
+notable, and it will do both fluently whether or not it does them correctly. A
+fabricated HbA1c delta reads exactly like a real one.
+
+So the split runs the other way. **Every number is computed in TypeScript, and
+the model only narrates them.**
+
+```
+lib/ai/facts.ts      pure   patient rows -> a fact object
+lib/ai/prompt.ts     pure   system prompt + the fact object, and nothing else
+lib/ai/verify.ts     pure   every number in the prose, checked against the facts
+lib/ai/provider.ts   server-only, holds the key, one POST
+lib/ai/summary.ts    load -> facts -> narrate -> verify
+```
+
+`facts.ts` computes, per test: first and latest value, the change, the
+direction, the span in days, the reference range, where the latest value sits
+against it, and how many readings fall outside it. Per questionnaire: the two
+most recent completed scores, their bands, the change, and whether the band
+moved. Plus age, sex, and how stale the data is.
+
+Everything the model can say is therefore already true before it is asked to
+say anything.
+
+### How is hallucination risk handled?
+
+Three layers, and only the first is a prompt.
+
+**1. The prompt forbids it.** Specific and checkable rather than "be careful":
+*never write a number that does not appear in the JSON; never diagnose; never
+suggest or adjust treatment; never mention medications or dosages; never
+speculate about a cause.*
+
+**2. The output is verified, mechanically.** `verify.ts` extracts every number
+from the returned prose and asserts each one exists in the fact payload. A
+summary containing a figure that is not in its own source is **discarded and
+never shown** — the panel falls back to displaying the facts alone, and says
+why. This is the part that matters: reducing the model to a narrator is what
+makes the check possible, and the check is what turns the design from a promise
+into something with a visible failure mode.
+
+Three details the number scan had to get right, each of which produced a false
+verdict in testing before it was fixed:
+
+- `HbA1c` and `DSMA-8` contain digits, and reported two inventions on a
+  correct summary until instrument names were stripped first.
+- Dates are stripped too. Admitting every year, month and day into the allowed
+  set instead would let a fabricated score of `14` pass because some reading
+  happened on the 14th.
+- A number ending a sentence — `...rose to 7.1.` — was skipped entirely by the
+  first pattern, so a fabrication in the most common position would never have
+  been checked. There is a regression test for it.
+
+**3. The facts are rendered beside the prose.** Always, in the same panel. A
+clinician reads the summary *against* its source rather than instead of it.
+
+### Is the prompt design thoughtful?
+
+The model is cast as a narrator, not an analyst, and every instruction follows
+from that — there is no "work out the trend", because the trend is already in
+the input.
+
+One decision is worth calling out. **The DSMA-8 score direction is stated
+twice**: in the system prompt and again inside the payload as
+`scoreDirectionNote`. Every DSMA-8 item is negatively worded — *"I missed or
+skipped a dose of my diabetes medication"* — so a **higher score is a patient
+doing worse**. That is the opposite of the prior a model brings to a score out
+of 24, it is the single most likely error, and getting it backwards inverts the
+entire summary while reading perfectly well. It is asserted in a test as well.
+
+Temperature is 0.2 — low, but not zero, because this is prose and zero produces
+the same stilted sentence every time. The grounding guarantee comes from the
+verifier, not from pinning the sampler, which is what makes that affordable.
+
+### Is it actually useful?
+
+It is one button on a page the clinician is already reading, and it answers the
+question the charts do not: *what changed, and by how much.* The three charts
+show shape; the tables show rows; neither says "HbA1c rose 0.3 over 63 days,
+both readings above range, while the DSMA-8 score moved from Moderate to High."
+
+It refuses to produce prose in two cases rather than padding: **fewer than two
+data points**, and **an ungrounded response**. Both are designed states.
+
+### What it deliberately does not do
+
+- **No chat, no history, no streaming, no RAG.** One button, one call.
+- **Nothing is persisted.** A machine-written narrative is not a clinical
+  record, and storing it would make it one — it would outlive the data it
+  described with no way for the next reader to tell a stale summary from a
+  current one. It is recomputed on request, or not shown.
+- **No clinical thresholds are invented.** `facts.ts` reports direction,
+  magnitude and range status. "Concerning" and "improving" are words for a
+  clinician; a threshold invented in our code would be an unsourced clinical
+  rule wearing the costume of a computation.
+
+### What is sent to the provider
+
+Age, sex, and the computed fact object. That is the whole payload.
+
+**Never sent:** name, MRN, email, phone, the date of birth itself, any token, or
+anything about any other patient. Age is derived from the date of birth and the
+date of birth is then discarded — it is not a parameter of any function in
+`facts.ts`, so it cannot leak by someone later passing the wrong object. A test
+asserts the serialised payload against each forbidden field, because a type
+cannot fail at runtime.
+
+The key is server-side only, never `NEXT_PUBLIC_`, never logged. The provider's
+response body is never logged either: a provider that echoes the request back
+would put the fact payload into a log line.
+
+### Limitations, stated plainly
+
+- **The verifier catches fabricated numbers, not fabricated meaning.** Every
+  clinical statement in this summary is numeric, which is why the check is worth
+  as much as it is — but a fluent, entirely non-numeric wrong claim would pass.
+  Nothing mechanical would catch that, which is why the facts are on screen.
+- **The allowed-number set is generous with small integers.** It contains every
+  number in the payload, so a fabricated `2` may coincide with a real count. The
+  check is strongest exactly where it matters most — decimal clinical values.
+- **It depends on a free tier.** A rate-limited provider is a designed error
+  state, not an outage, but the button will sometimes say try again shortly.
+- **It is not a second opinion.** It restates recorded data in sentences. It has
+  no access to the notes, the history, or the patient.
+
+### Provider
+
+An OpenAI-compatible `/chat/completions` endpoint rather than an SDK. Gemini,
+Groq, OpenRouter, Cerebras and Mistral all speak it, so switching provider is
+two environment variables instead of a rewrite — which matters because the
+feature depends on a free tier that can rate-limit at the wrong moment. It also
+keeps a dependency out of `package.json` for one `fetch` of a documented JSON
+shape.
+
+Default is Google Gemini. Set `AI_MODEL` to whatever your console lists — model
+ids change more often than endpoints do.
+
+---
+
 ## Security
 
 | Control | Implementation |
@@ -604,6 +765,9 @@ Seeded patients are marked `EXTERNAL_SEED` and never written to at all.
 | FHIR data minimisation | Email and phone are deliberately **not** sent as `telecom`. The server is shared and reads are open, so every field we push is readable by every other organisation on it |
 | FHIR import surface | `/api/fhir/import` accepts only the documented seed MRNs. Accepting any MRN would turn an authenticated session into a lookup tool for every record on a shared server |
 | External errors | `OperationOutcome.diagnostics` is truncated and sanitised before it is stored or shown; raw response bodies never reach the UI or the logs |
+| AI key | Confined to `lib/ai/config.ts` and `provider.ts`, both `server-only`. Whether a key exists is decided on the server too, so neither the key nor its presence reaches the browser |
+| AI data minimisation | Age and sex plus computed figures. Name, MRN, email, phone, the date of birth itself and every token are never sent — and are not parameters of any function in `lib/ai/facts.ts`, so they cannot leak by passing the wrong object. Asserted in a test against the serialised payload |
+| AI output | Every number in a generated summary is checked against its source; an unsourced figure means the summary is discarded, not shown with a caveat. Nothing generated is persisted |
 | Patient data | Entirely fabricated |
 
 > **This is good practice, not compliance.** No claim of HIPAA or GDPR
@@ -620,10 +784,18 @@ npm test        # vitest
 npm run lint    # eslint
 ```
 
-264 tests, concentrated on the pure functions — scoring and every risk-band
+299 tests, concentrated on the pure functions — scoring and every risk-band
 boundary, CSV parsing against BOM/CRLF/quoted/ragged input, classification,
-dashboard aggregates, date round-tripping, and the whole FHIR mapping and
-reconciliation layer.
+dashboard aggregates, date round-tripping, the whole FHIR mapping and
+reconciliation layer, and the Tier 3 grounding.
+
+The AI tests follow the same principle as the FHIR ones: the interesting
+failures are all in code that never touches the network. They cover the
+arithmetic, the DSMA-8 score-direction inversion — a *rising* score is a patient
+doing worse, which is the opposite of the prior a model brings to a score out of
+24 — that the prompt payload carries no identifying field, and both directions
+of the output verifier, including the three shapes that made it return a false
+verdict before they were fixed.
 
 The FHIR tests carry more weight than the rest, for a specific reason: **the
 server's writes are permanent** — `DELETE` is disabled — so the mappers, the
@@ -648,6 +820,7 @@ reading the output:
 | Timing the first sync batch | 14 records took **12.8s** pushed sequentially — a fifth of a Vercel function's budget — while the throttle's concurrency cap sat unused because nothing ever ran concurrently. Now 3.2s |
 | Timing the second import | A re-import was idempotent but took **10s per patient against 2.4s** for the first, writing 180 unchanged rows back one at a time. Comparing before writing brought it to 2.1s |
 | Driving a headless browser at 375px | Three layout defects nobody had seen, because Recharts only draws client-side and no browser pass had ever been run: `/labs/upload` scrolled sideways (a `-mx-5` breakout inside a `Card` with no padding to cancel it), a risk-band label was truncated to `not survey…` **at every width**, and the nav clipped "National platform" on every authenticated page |
+| Writing the test for the AI verifier before trusting it | The number scanner skipped any figure ending a sentence — `...rose to 7.1.` — because its lookahead excluded a trailing full stop. A fabricated number in the most common position in the output would never have been checked, and the verifier would have reported every summary as grounded |
 
 ---
 
@@ -915,6 +1088,35 @@ submission does not have, and would give the clinician nothing to watch.
 A single patient is the exception and syncs inline within a 6-second budget,
 because the brief asks for a patient to sync *when they are created*.
 
+### D-20: The model narrates precomputed facts; it is never asked to analyse
+
+Every number in an AI summary is computed in TypeScript first. The model
+receives a finished fact object and writes prose about it.
+
+The alternative — handing over the rows and asking what it sees — asks a
+language model to do arithmetic and to judge clinical significance, and it does
+both fluently whether or not it does them correctly. This way, every figure the
+summary can contain is already true, a fabricated one becomes mechanically
+detectable, and the same object can be rendered beside the prose so a clinician
+checks one against the other. It is also less code, not more.
+
+### D-21: An ungrounded summary is discarded, not flagged
+
+`verify.ts` extracts every number from the returned prose and checks it against
+the fact payload. A summary carrying a figure that is not in its source is not
+shown with a warning attached — it is thrown away, and the facts are displayed
+alone with an explanation.
+
+Showing suspect clinical prose with a caveat next to it assumes the caveat is
+read. In a clinical context the safer default is that the system declines to
+show what it knows to be unsourced.
+
+### D-22: The AI summary is never persisted
+
+It is recomputed on request or not shown. A machine-written narrative stored
+against a patient becomes part of the record: it outlives the data it described,
+and the next reader has no way to tell a stale summary from a current one.
+
 ---
 
 ## What is and isn't built
@@ -955,10 +1157,17 @@ A fourth was found by probing before the first write: **five other candidates
 already hold `MRN-1001`**, so the guide's own `If-None-Exist` example matches
 foreign resources. See [Ownership](#ownership-and-the-trap-in-the-api-guides-own-example).
 
-### Tier 3 — AI feature: not started
+### Tier 3 — AI feature: complete
 
-Out of scope for this submission. The brief makes Tier 3 conditional on Tiers 1
-and 2 being complete and deployed.
+One feature: the **trajectory summary** on a patient page. Full reasoning in
+[AI trajectory summary (Tier 3)](#ai-trajectory-summary-tier-3).
+
+The design in one line: every number is computed in TypeScript, the model only
+narrates them, and a verifier discards any summary containing a figure that is
+not in its own source.
+
+Started only after Tiers 1 and 2 were complete, deployed and verified live,
+which is the order the brief asks for.
 
 ### Known limitations
 
