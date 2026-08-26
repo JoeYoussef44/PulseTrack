@@ -20,6 +20,7 @@ export type AiErrorKind =
   | "server" // 5xx
   | "network" // timeout, DNS, connection reset
   | "empty" // a 2xx carrying no usable text
+  | "truncated" // a 2xx carrying half a sentence — see readText
   | "unexpected";
 
 const RETRYABLE = new Set<AiErrorKind>(["rate_limit", "server", "network"]);
@@ -61,6 +62,8 @@ export function messageFor(kind: AiErrorKind): string {
       return "Could not reach the AI provider.";
     case "empty":
       return "The AI provider returned an empty response.";
+    case "truncated":
+      return "The AI provider cut the summary off partway. Try again, or set AI_MODEL to a model that does not spend its output budget on reasoning.";
     default:
       return "The summary could not be generated.";
   }
@@ -102,7 +105,10 @@ function classify(status: number): AiErrorKind {
 
 /** The subset of the OpenAI chat-completions response we actually read. */
 interface ChatCompletion {
-  choices?: Array<{ message?: { content?: string | null } }>;
+  choices?: Array<{
+    message?: { content?: string | null };
+    finish_reason?: string | null;
+  }>;
 }
 
 /**
@@ -136,6 +142,12 @@ export async function complete(prompt: PromptRequest): Promise<string> {
           ],
           temperature: prompt.temperature,
           max_tokens: prompt.maxOutputTokens,
+          // Omitted entirely unless configured. A provider that does not know
+          // the parameter rejects the whole request with a 400 — Gemini does
+          // exactly that for `reasoning_effort: "none"`.
+          ...(config.reasoningEffort
+            ? { reasoning_effort: config.reasoningEffort }
+            : {}),
         }),
         // A hung connection must not hold the function until the platform kills
         // it — that turns a slow provider into a 60-second blank screen.
@@ -171,7 +183,14 @@ export async function complete(prompt: PromptRequest): Promise<string> {
       throw error;
     }
 
-    const text = extractText(await safeJson(response));
+    const { text, truncated } = readText(await safeJson(response));
+
+    // Truncation is not retried. The budget will be identical next time, so a
+    // second attempt produces a second fragment and doubles the wait.
+    if (truncated) {
+      throw new AiError("truncated", messageFor("truncated"), response.status);
+    }
+
     if (text) return text;
 
     lastError = new AiError("empty", messageFor("empty"), response.status);
@@ -211,13 +230,35 @@ async function safeJson(response: Response): Promise<unknown> {
   }
 }
 
-function extractText(body: unknown): string | null {
-  const completion = body as ChatCompletion | null;
-  const content = completion?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") return null;
+/**
+ * The text, and whether the provider stopped because it ran out of budget.
+ *
+ * `finish_reason: "length"` has to be treated as a failure, and this was found
+ * the hard way against a real provider. Gemini 3.x is a reasoning model whose
+ * thinking tokens are charged against `max_tokens`, and thinking expands to
+ * consume whatever budget it is given: at a 400-token cap it spent 396 on
+ * reasoning and 13 on output, returning the fragment
+ * "HBA1C (Hemoglobin A1c): 3".
+ *
+ * That fragment is the dangerous case, because **the grounding check cannot
+ * catch it.** `3` genuinely is one of the patient's figures, so `verify.ts`
+ * passes it and a clinician is shown half a sentence as a finished summary.
+ * Truncation is not fabrication, and it needs its own guard.
+ *
+ * The default model is now a non-reasoning one, which makes this rare. It is
+ * checked anyway, because the model is configurable and the next person to set
+ * `AI_MODEL` will not know any of the above.
+ */
+function readText(body: unknown): { text: string | null; truncated: boolean } {
+  const choice = (body as ChatCompletion | null)?.choices?.[0];
+  const content = choice?.message?.content;
 
-  const trimmed = content.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  const text =
+    typeof content === "string" && content.trim().length > 0
+      ? content.trim()
+      : null;
+
+  return { text, truncated: choice?.finish_reason === "length" };
 }
 
 function sleep(ms: number): Promise<void> {
