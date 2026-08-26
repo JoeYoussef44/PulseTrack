@@ -8,6 +8,108 @@ reconstruct it from diffs.
 
 ---
 
+## Session 10 — 2026-08-26 (Wed) — the clinic analytics reviewed, and a change that moves nothing today
+
+One PR (#45), **open on `dev` and not merged**. Tests 363 → 396. A review of the
+clinic lab analytics built in session 9 rather than a rebuild: the histograms,
+the trend, the reference context, the unit protection and the styling all
+survive.
+
+### The requested change, and the honest measurement of it
+
+The clinic monthly figure was the mean of every result collected that month. A
+patient measured three times therefore carried three times the weight of one
+measured once, so the line tracked the appointment book as much as the
+population. It now summarises each patient within the month first and averages
+those — `patientMonthlyMeans`, then `monthlyClinicMeans`, two exported functions
+so the intermediate step can be tested on its own.
+
+**Then it was measured against the real register, and it moves nothing.** Only
+2 of 66 patient-months carry more than one reading, and in both of those the two
+patients have *equal* counts — which makes the raw mean and the patient-weighted
+mean mathematically identical. Every delta across three tests and thirteen
+months is rounding: the largest is 0.4 mg/dL, and it is the display precision,
+not the method.
+
+That is worth writing down rather than quietly claiming an improvement. The
+method is right and the seed simply does not exercise it; it would the first
+time one patient is seen twice in a month and another once. **A correctness fix
+that changes no output today is still a correctness fix, and saying so is more
+credible than a number that overstates it.**
+
+### Three defects the review found that the request did not name
+
+- **A float boundary bug in the histogram.** `(5.5 - 4.0) / 0.5` is
+  `2.9999999999999996`, so `Math.floor` filed an HbA1c of exactly 5.5 into the
+  **5.0–5.5** bucket — one bucket below the one its own label names. Any bin
+  index computed as *divide then floor* has this, and it is invisible: the bar
+  is one bucket to the left and nothing about the chart looks wrong.
+- **`medianLatest` was never rounded** and could reach the page as
+  `5.1499999999999995`. Rounded now to one decimal more than a mean, so a
+  genuine midpoint of 110 and 111 stays 110.5 rather than becoming 111 — a
+  reading nobody took.
+- **A test whose every result is in a non-canonical unit rendered nothing**,
+  exactly like a test nobody has ordered. With all three in that position the
+  page said "No lab results yet", which was false. `usableCount` had been
+  computed in `service.ts` since session 9 and never passed to the component.
+
+### A bucket is not normal because most of it is
+
+The histogram had one boolean, `aboveRange`. Two consequences, both of which
+tell a clinician something untrue:
+
+- **Hypoglycaemia was painted identically to a normal reading.** Below-range and
+  in-range were the same colour, because the only question asked was whether the
+  bucket was above the ceiling.
+- **A bucket straddling a limit was painted as though all of it were fine.**
+  Glucose's ceiling is 99 and the bucket was 80–100.
+
+Buckets are now anchored at the **reference floor** rather than at multiples of
+the width from zero. That makes the floor an edge for every test and the ceiling
+one wherever it divides — systolic pressure's 90 and 120 both land on edges at a
+width of 5, so it has no straddling bucket at all. Where one is unavoidable the
+bar takes a neutral tone and the tooltip names the limit it spans.
+
+The general form, and it is session 9's unit finding again in new clothes: **a
+visual encoding is a claim about every value it covers.** A fill colour asserts
+something about the whole bucket, and the assertion is false whenever the bucket
+crosses the boundary the colour is about.
+
+### Two ways a probe lied, fifth session running
+
+Both reported a working feature as broken — again the dangerous direction.
+
+- **A single `mouse.move` does not open a Recharts tooltip.** The line tooltip
+  read empty and the feature looked dead. Recharts listens for `mousemove`, and
+  one jump from the origin does not reliably produce one over the plot area.
+  Two moves do. The histogram tooltip on the same page worked the whole time,
+  which is what said the probe was wrong rather than the code.
+- **`g.recharts-cartesian-axis text` matched nothing** while
+  `.recharts-cartesian-axis-tick-value` matched 82 elements on the same page.
+  Every axis read as having no ticks. Separating x from y by comparing rendered
+  `y` positions is the version that does not depend on a class name the library
+  is free to change.
+
+### What was reviewed and deliberately left alone
+
+Worth recording, because "we checked and it was already right" is invisible in a
+diff and someone will otherwise check it again:
+
+- **Unit handling** — nothing converts, nothing alters a stored row. Only the
+  wording changed, so it reads as a decision rather than an error.
+- **Reference ranges** — already deterministic: the catalog for clinic figures,
+  reported-with-consensus for patient charts. Written down as D-25.
+- **Sorting** — already on timestamps, never on formatted labels. Now tested.
+- **Sparse months** — already gaps rather than zeroes. Now tested, and the
+  tooltip's patient count makes a thin month legible rather than hidden.
+- **Dates** — already UTC-safe end to end. Now has a regression test at both
+  ends of a month.
+- **Aggregation location** — already server-side, pure, `cache`d, one query.
+- **A monthly median line** — considered and declined. The mean is the requested
+  trend and a second series costs more clarity than it adds.
+
+---
+
 ## Session 9 — 2026-08-26 (Wed) — one question, and the three things it turned out to be
 
 Three merged PRs (#41, #42, #43). Tests 299 → 363. It started with Joe asking
