@@ -378,11 +378,11 @@
   <header class="mast">
     <div class="eyebrow">Capadev engineering challenge &middot; user guide</div>
     <h1>Using PulseTrack
-      <span class="sub">Every screen, what happens when you click, and the rules the app will not break — Tier&nbsp;1 and Tier&nbsp;2, end to end.</span>
+      <span class="sub">Every screen, what happens when you click, and the rules the app will not break — all three tiers, end to end.</span>
     </h1>
     <dl class="facts">
       <div class="fact"><dt>Who signs in</dt><dd>Clinicians only. Patients never get an account.</dd></div>
-      <div class="fact"><dt>Covers</dt><dd>All six Tier&nbsp;1 areas and all four Tier&nbsp;2 requirements.</dd></div>
+      <div class="fact"><dt>Covers</dt><dd>All six Tier&nbsp;1 areas, all four Tier&nbsp;2 requirements, and Tier&nbsp;3.</dd></div>
       <div class="fact"><dt>Read it as</dt><dd>A walkthrough. Each section is one screen.</dd></div>
       <div class="fact"><dt>Live</dt><dd>pulse-track-joe.vercel.app</dd></div>
     </dl>
@@ -783,6 +783,13 @@
       <div class="step">
         <div class="n">5.2</div>
         <div class="bd">
+          <h3>The trajectory summary</h3>
+          <p>A panel with one <strong>Summarise</strong> button, sitting directly under the banner. It writes a few sentences about where this patient is heading, from their recorded figures and nothing else. It is Tier 3, and <a href="#tier3">&sect;9</a> is the whole account of how it is kept honest &mdash; including the two states where it declines to say anything.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">5.3</div>
+        <div class="bd">
           <h3>Four charts, side by side</h3>
           <p>DSMA-8 score history plus one chart per lab measure — never two measures on one pair of axes. A dual axis lets you imply any correlation you like by choosing the scales, so there isn't one.</p>
           <div class="wh">
@@ -794,7 +801,7 @@
         </div>
       </div>
       <div class="step">
-        <div class="n">5.3</div>
+        <div class="n">5.4</div>
         <div class="bd">
           <h3>Two tables, abreast</h3>
           <p><strong>Assessments</strong>: when each was sent, its status, when it was completed, the score and the band. <strong>Lab results</strong>: every stored result, newest first, with its value, unit, reference range and where it came from. The tables are the charts in full — <strong>no value is reachable only by hovering</strong>, which matters for anyone reading this on a touchscreen or with a keyboard.</p>
@@ -909,7 +916,50 @@
     <p>A table at the foot of the page, never a silent retry. It distinguishes <strong>Refused</strong> — the platform will not let us write that record, which is a fact about ownership and will not improve on a retry — from <strong>Failed</strong>, a transient fault worth trying again. Transient failures are retried automatically with a backoff; refusals are surfaced, with whatever the platform actually said.</p>
   </section>
 
-  <!-- ============ 9. RULES ============ -->
+  <!-- ============ 9. TIER 3 ============ -->
+  <section id="tier3">
+    <h2><span class="tag">Tier 3</span>The trajectory summary</h2>
+
+    <p class="lede">One button, on a screen the clinician is already reading. It turns a patient&rsquo;s lab trends and questionnaire scores into a few sentences of plain prose. The design question underneath it is the one the brief asks: how do you put a language model near clinical data without it inventing any of that data. The answer here is that <strong>the model is never allowed to calculate anything</strong> &mdash; it is handed the figures and asked only to narrate them.</p>
+
+    <div class="note">
+      <div class="nh">The fact that shapes everything else</div>
+      <p>Every number in the summary is computed in TypeScript <em>before</em> the model is called, and checked again <em>after</em> it replies. The prompt does tell it to use no figures but the ones supplied &mdash; but that instruction alone is unfalsifiable and fails silently, so it is not what the guarantee rests on. What it rests on is the check afterwards: every number is pulled back out of the prose and matched against the source. <strong>A summary containing a figure that is not in this patient&rsquo;s records is discarded and never shown.</strong></p>
+    </div>
+
+    <h3>The five things the panel can say</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>What you see</th><th>When, and why it is worded that way rather than as an error</th></tr></thead>
+        <tbody>
+          <tr><td><strong>A summary</strong>, with the figures printed beside it</td><td>The normal path. The prose and its source sit together, so the summary is read <em>against</em> the numbers rather than instead of them.</td></tr>
+          <tr><td><strong>Not enough data to summarise</strong></td><td>Fewer than two recorded data points &mdash; lab results, completed assessments, or one of each. Narrating a single reading is one sentence restating that reading, which is worse than an empty state saying so plainly. The threshold is deliberately low, because the cost of refusing is a clinician seeing nothing at all.</td></tr>
+          <tr><td><strong>Summary withheld</strong></td><td>The generated note referred to a figure that does not appear in this patient&rsquo;s records, so it was discarded rather than shown. The recorded figures are still displayed. <strong>This state is the safeguard working</strong>, not a fault, and it is worded that way.</td></tr>
+          <tr><td><strong>The summary could not be generated</strong></td><td>The provider failed or timed out. The message is our own classification of the failure, never the provider&rsquo;s response body &mdash; that body can carry the prompt back, and the prompt carries patient data.</td></tr>
+          <tr><td><strong>Not configured on this deployment</strong></td><td><code>AI_PROVIDER</code> and <code>AI_API_KEY</code> are unset. Everything else in the app runs untouched; Tier 3 is the only thing that needs them.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>What the model is given</h3>
+    <p>A compact payload, and no database access: age and sex, each lab measure with its readings and direction of travel, the DSMA-8 scores and how many were completed, and how many days have passed since the most recent data of any kind. Three details in that payload exist purely to remove a way of being wrong.</p>
+    <div class="wh">
+      <div>The <b>scale is supplied</b> &mdash; 0&ndash;24 &mdash; so the model never has to recall it, and cannot describe a score of 19 as though the ceiling were 40.</div>
+      <div>The <b>direction is supplied</b>: on DSMA-8 a <b>higher score is worse</b>, because every item is negatively worded. It is the single easiest thing for a model to get backwards, and getting it backwards inverts the entire summary. It is stated in the payload, stated again in the prompt, and a test fails if the wording is removed.</div>
+      <div>Every figure is <b>rounded once</b>, in the code that builds the payload. The number the model is shown and the number the check will accept are then the same number by construction &mdash; round it later and the model faithfully echoes <code>6.8</code> while the check holds <code>6.799999999999999</code> and rejects a summary that was correct.</div>
+    </div>
+
+    <h3>What the check does, and what it cannot do</h3>
+    <p>It catches <strong>invented and mistyped numbers</strong>, which is the failure mode that matters here because every clinical statement in this summary is numeric. Dates are stripped out before anything is counted &mdash; a date is not a clinical figure, and admitting every year and day into the allowed set would let a fabricated score of <code>14</code> pass because some reading happened on the 14th. Names containing digits are stripped for the same reason, so <code>HbA1c</code> and <code>DSMA-8</code> are not read as two invented figures.</p>
+    <p>It does <strong>not</strong> catch a fluent, entirely non-numeric wrong claim &mdash; &ldquo;the patient is managing well&rdquo; written over a deteriorating trend. Nothing mechanical would. That is exactly why the computed figures are rendered beside the prose rather than behind it, and why this panel is a note to a clinician who can see the charts on the same screen, never a decision.</p>
+
+    <div class="note">
+      <div class="nh">What it is not</div>
+      <p>It is not a diagnosis, a triage tool or a recommendation. It carries a disclaimer and names the provider and model that produced it, and it is generated only when somebody presses the button &mdash; never on page load, never in a batch. A clinician who ignores the panel entirely loses nothing: everything it says is already on the screen, in the charts and the tables.</p>
+    </div>
+  </section>
+
+  <!-- ============ 10. RULES ============ -->
   <section>
     <h2><span class="tag">The rules</span>Eight things the app will not do, whatever you click</h2>
 
@@ -949,7 +999,7 @@
     </div>
   </section>
 
-  <!-- ============ 10. NOT IN SCOPE ============ -->
+  <!-- ============ 11. NOT IN SCOPE ============ -->
   <section>
     <h2><span class="tag">Scope</span>What it deliberately does not do</h2>
 
@@ -967,7 +1017,7 @@
     </div>
   </section>
 
-  <!-- ============ 11. COVERAGE ============ -->
+  <!-- ============ 12. COVERAGE ============ -->
   <section>
     <h2><span class="tag">Coverage</span>Where each requirement is satisfied</h2>
 
@@ -994,14 +1044,27 @@
           <tr><td>Push patients and lab results</td><td><strong>National platform &rarr; Push</strong>, plus the automatic push when a patient is saved. &sect;8</td></tr>
           <tr><td>Pull the seeded patients and their history</td><td><strong>National platform &rarr; Import</strong> — five patients, 36 observations each. &sect;8</td></tr>
           <tr><td>Authentication, failures, retries, no double-import</td><td>The connection card, the failures table, and the fact that a second run writes nothing. &sect;8</td></tr>
-          <tr><td>An integration diagram</td><td>The README, and <code>.docs/04-tier2-fhir-integration.html</code> for the full account.</td></tr>
+          <tr><td>An integration diagram</td><td>The README, which carries the integration diagram and the sequence of a sync.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Tier 3 &mdash; the brief&rsquo;s four questions</h3>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>The question the brief asks</th><th>The answer, and where you see it</th></tr></thead>
+        <tbody>
+          <tr><td>Is it grounded in the real data?</td><td>Every number is computed in TypeScript first; the model only narrates. The figures are printed beside the prose. &sect;9</td></tr>
+          <tr><td>Is hallucination risk handled?</td><td>Three ways rather than one: the prompt, a <strong>mechanical check of the output</strong> that discards any summary carrying an unsupported figure, and the source figures shown alongside. &sect;9</td></tr>
+          <tr><td>Is the prompt design thoughtful?</td><td>Narrator, not analyst. The scale and the score direction are supplied rather than recalled, and the direction is stated twice and covered by a test. &sect;9</td></tr>
+          <tr><td>Is it actually useful, or a demo?</td><td>One button on a page the clinician already reads, and it <strong>refuses rather than pads</strong> when there is too little to say. &sect;9</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="note">
       <div class="nh">If you have ten minutes and want to see everything work</div>
-      <p>Sign in &rarr; <strong>Clinic</strong> to see the register at a glance &rarr; open a patient and read the four charts &rarr; <strong>Send assessment</strong>, copy the link, open it in a private window and complete it, then reload the patient &rarr; <strong>Lab import</strong>, download the template, then import <code>.docs/lab-results-ugly.csv</code> and check the totals against <code>05-ugly-csv-expected-outcomes.md</code> &rarr; <strong>National platform</strong>, press <strong>Import</strong>, then press it again and watch the second run write nothing.</p>
+      <p>Sign in &rarr; <strong>Clinic</strong> to see the register at a glance &rarr; open a patient and read the four charts &rarr; <strong>Send assessment</strong>, copy the link, open it in a private window and complete it, then reload the patient &rarr; <strong>Lab import</strong>, download the template, then import <code>.docs/lab-results-ugly.csv</code> and check the totals against <code>05-ugly-csv-expected-outcomes.md</code> &rarr; <strong>National platform</strong>, press <strong>Import</strong>, then press it again and watch the second run write nothing &rarr; back on a patient, press <strong>Summarise</strong> and read the note against the figures printed beside it.</p>
     </div>
   </section>
 

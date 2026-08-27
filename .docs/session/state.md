@@ -1,9 +1,9 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-26**, session 10 (the clinic analytics reviewed, then
-> everything promoted to production — all three tiers are now live on `main`,
-> and Tier 3 has been confirmed working there).
+> Last updated: **2026-08-27**, session 11 (the pre-share cleanup: the demo
+> database reset to its documented state, six documents moved out of the repo,
+> the user guide extended to Tier 3, and the cold start finally measured).
 
 ---
 
@@ -43,6 +43,12 @@ to `dev`; PR **#46 promoted `dev` → `main`** at 15:10 UTC on 2026-08-26, carry
 `git diff origin/dev origin/main` is **empty**: the two branches hold identical
 content, and `main` is two commits ahead only in merge topology.
 
+**Session 11 was a cleanup before sharing the link with the team** (§1l): the
+demo database is back to exactly the state the docs describe (**A3 closed**),
+six of the eight `.docs` HTML/PDF documents now live outside the repo, the user
+guide covers Tier 3, and **the cold start was measured at last** — 2.32s worst
+case, no `P1001`.
+
 **Everything the brief asks for is now live on the production URL**, and
 **Tier 3 has been confirmed working there by Joe** — A7 is closed (§3).
 
@@ -71,6 +77,7 @@ code.
 | 18 · Clinic insight dashboard | ✅ **Complete and live** (PR #42, promoted in #46) |
 | 19 · Session 9 record | ✅ Complete (PRs #43, #44) |
 | 20 · Clinic analytics review | ✅ **Complete and live** (PR #45, promoted in #46) |
+| 21 · Pre-share cleanup | ✅ **Complete** — §1l. DB reset, docs relocated, guide covers Tier 3 |
 | 11 · Submit | ⬜ **NEXT — and the only thing left.** Due Wed 2026-08-26 |
 
 ### Tier 1 against the brief's own six areas
@@ -499,6 +506,127 @@ Checked the way `.docs` documents are (D-DOC-1): zero horizontal overflow at
 no charset mojibake, and the print stylesheet confirmed rendering dark text on
 white — the §6e failure that looks fine on screen until the PDF is opened.
 
+### 1l. Session 11 — the pre-share cleanup
+
+Asked for before sharing the repo link with the team. Four things, none of them
+code.
+
+**The demo database is back to what the documents say it is.** A3 is closed by
+restoring rather than re-documenting, which reverses §9's earlier
+recommendation — that recommendation was written on the assumption that testing
+would continue and drift a fourth time, and this is the last cleanup before the
+link goes out.
+
+```
+before:  patients=10  assessments=16  answers=88  labs=201  uploads=5
+after:   patients=8   assessments=9   answers=56  labs=190  uploads=1
+```
+
+What went, and why each was drift rather than data:
+
+| Removed | Why |
+|---|---|
+| `MRN-444` and `MRN-3410` | Created by hand during manual testing on the live site, not by the seed. `MRN-444` carried **six assessments and no labs**, which reads as test debris on a demo register |
+| 7 assessments, 32 answers | Cascaded from those two patients |
+| 4 `lab-results-ugly.csv` upload records | **Three of them accepted zero rows** — the same file re-run. Pure clutter in *Recent imports* |
+| 11 lab rows | The accepted rows from the first ugly-CSV run |
+
+**Checked before deleting, in this order, because the order matters.**
+
+1. **Every record is a fabricated identity** — all ten patients and the
+   clinician, checked against the A2/A8 fragment list before anything was
+   removed. This had to come first: §4c's procedure is *rename, re-push, then
+   delete*, and deleting the local row first would have made the platform copy
+   uncorrectable. Nothing needed correcting, but that was established rather
+   than assumed.
+2. **D-QA-2 — none of the 11 rows had been pushed to the platform**, so nothing
+   is orphaned there. A platform write cannot be undone.
+3. **`SEED_MRNS` is `MRN-2001`–`MRN-2005` only**, so no future **Import**
+   can resurrect the two deleted patients. Verified in `lib/fhir/systems.ts`
+   rather than assumed from the ownership flag.
+
+Their FHIR resources **819** and **830** remain on the shared server, carrying
+fabricated identities, because that server disables DELETE. Same permanent
+caveat as §4b and §4c.
+
+**Verified on production afterwards, signed in:** 8 patients · 78% completion
+(7 of 9) · 1 upload · 190 labs; 7 charts, 35 bars and 36 dots with real
+geometry; both patient pages 200 with the **Summarise** button present; zero
+horizontal overflow at 1440; zero console errors.
+
+One deliberate consequence: the register no longer contains a result in a
+non-canonical unit, so **the histogram's "excluded for unit" state no longer
+appears on the demo site**. The behaviour and its tests are untouched — D-25
+still holds — but it is no longer demonstrable by looking. That was judged an
+acceptable price for a register that matches its own documentation.
+
+**Six documents moved out of the repo**, to
+`C:\Users\User\Desktop\Joe\PulseTrack-Docs\` — the project overview, the
+Tier 1 acceptance checklist and the Tier 2 integration explainer, with their
+three rendered PDFs. Recorded here the way §1k records the interview guide, so
+a later session does not hunt for them in `.docs` or render them again.
+
+`.docs` now holds only what an evaluator should read: the five official Capadev
+attachments, `01-challenge-analysis.md`, `05-ugly-csv-expected-outcomes.md`,
+the ugly CSV, and **the user guide, which was deliberately kept** — it is the
+document to hand someone before a walkthrough call, and the submission email
+points at it.
+
+Moving `04-tier2-fhir-integration.html` left **one dangling reference** inside
+the user guide, which pointed a reader at it for the integration diagram. It now
+points at the README, which was checked to actually carry both the integration
+diagram and the sync sequence.
+
+**The user guide covers Tier 3** (§9 item 3, closed). A new §9 — the panel's
+five states, what the model is given and why the scale and score direction are
+supplied rather than recalled, and what the mechanical check does *and cannot
+do*. Also: a step 5.2 on the patient page walkthrough, a Tier 3 row in the
+coverage table answering the brief's four questions, **Summarise** added to the
+ten-minute tour, and two masthead claims corrected — it had billed itself as
+covering "Tier 1 and Tier 2, end to end".
+
+**Two things the re-export nearly got wrong**, both caught by measuring rather
+than looking:
+
+- The print check reported **light text on a white page** — the §6e failure that
+  looks perfect on screen until the PDF is opened. It was the *checker* that was
+  wrong, not the stylesheet: `emulateMediaType("print")` does not carry the
+  `data-theme="light"` opt-out, which has to be set explicitly. §6 already said
+  so. **A red probe is a claim about the probe until its mechanism is
+  understood** — §6e, in its second costume.
+- The PDF's render settings were **not recorded anywhere**, and guessing would
+  have reflowed sixteen pages. Recovered by rendering the *previous* HTML from
+  `git show HEAD:` at candidate margins until the output matched the shipped
+  file: **A4, `printBackground`, 12mm margins** reproduces it to within 12 bytes
+  of 633,800 — the document id. Written down in §5 so the next session does not
+  have to derive it again.
+
+**The cold start was measured** (§9 item 5, closed) — see §1m.
+
+### 1m. The cold start, measured at last
+
+The one path never observed working end to end, and the single request an
+evaluator is guaranteed to make. Measured 2026-08-27 at 10:16 UTC, after the
+deployment had been idle since the 09:42 UTC preview build:
+
+| Path | Cold | Warm |
+|---|---|---|
+| `/login` | **2.32s** | 0.61–0.76s |
+| `/assessment/<bad-token>` — **queries Neon** | **1.61s** | 0.57s |
+
+**Pass.** HTTP 200 both times, no error page, and **no `P1001`** — so
+`connectionTimeoutMillis` in `lib/db.ts` does not need raising.
+
+`/login` was the documented check, but it does not necessarily touch the
+database, and the documented failure mode is a Prisma connection error. The
+public assessment-token route was added precisely because it queries Neon
+without needing a session — otherwise the measurement would only have covered
+the Vercel lambda cold start and said nothing about the compute wake.
+
+One honest caveat: the compute had been idle **~34 minutes, not the full hour**
+§9 asked for. Neon's autosuspend is well below that, so the wake was real, but a
+much longer suspension has still not been measured.
+
 ---
 
 ## 2. Deadline
@@ -518,7 +646,7 @@ white — the §6e failure that looks fine on screen until the PDF is opened.
 | ~~B3~~ | ~~No Resend key~~ | **CLEARED.** Resend is configured and sending — see §4a for the constraint that comes with it. |
 | ~~A1~~ | ~~Rotate the Resend API key~~ | **CLOSED by Joe, session 6** — "not an issue any more". Recorded rather than silently dropped: the key was pasted into a chat transcript, and it was verified never to have reached git history or the client bundle. |
 | ~~A2~~ | ~~Two patient records carry real personal inboxes~~ | **CLEARED, session 6.** Both renamed to fabricated identities and re-pushed to the platform — §4b. |
-| **A3** | **Demo figures no longer match older PR bodies, and drifted again** | Now **10 patients / 16 assessments / 69% / 201 labs / 2 uploads** — the ugly-CSV rows are back in the shared database, imported during a verification run and not restored (D-QA-2 not honoured). Found by accident, in the corner of a screenshot taken for something else. Nothing in the README quotes the old numbers, so this is cosmetic — but the live site should look deliberate. |
+| ~~A3~~ | ~~Demo figures no longer match older PR bodies, and drifted again~~ | **CLEARED, session 11.** Restored to **8 / 9 / 190 / 1** — the state the docs describe and `npm run db:seed` reproduces. Was: | Now **10 patients / 16 assessments / 69% / 201 labs / 2 uploads** — the ugly-CSV rows are back in the shared database, imported during a verification run and not restored (D-QA-2 not honoured). Found by accident, in the corner of a screenshot taken for something else. Nothing in the README quotes the old numbers, so this is cosmetic — but the live site should look deliberate. |
 | ~~A4~~ | ~~PR #29 is on `dev`, not production~~ | **CLEARED, session 6.** Promoted in #30 and verified live — §1e. |
 | ~~A5~~ | ~~`main` is three commits behind `dev`~~ | **CLEARED, session 8.** Promoted as #35. |
 | ~~A6~~ | ~~`dev` was 16 commits behind `main`~~ | **CLEARED, session 8.** Tier 3 was merged straight to `main` in #37, bypassing `dev`, so the Preview environment and any new branch would have silently lacked it. `dev` was a clean ancestor and fast-forwarded. **Watch for this again:** the documented flow is feature → `dev` → `main`, and a feature merged directly to `main` leaves `dev` stale without warning. |
@@ -600,6 +728,8 @@ after  session 5:  patients=10  assessments=16  labs=190  uploads=1  rate=69%
                    labs: 180 FHIR + 10 CSV · patients: 5 EXTERNAL_SEED + 5 OWNED
 seen   session 7:  patients=10  assessments=16  labs=201  uploads=2  rate=69%
 seen   session 9:  patients=10  assessments=16  labs=201  uploads=5  rate=69%
+after  session 11: patients=8   assessments=9   labs=190  uploads=1  rate=78%
+                   RESET to the documented state — A3 closed. See §1l.
                    +1 patient and +1 upload from session-8 testing, both since
                    removed or accounted for; 5 upload records, 4 of them the
                    same ugly CSV re-run. 200 of the 201 labs are usable in an
@@ -718,6 +848,21 @@ except a habit. **Check the register for real identities before submitting.**
 ---
 
 ## 5. Commands
+
+**Re-rendering a `.docs` PDF.** These settings were not written down anywhere
+and had to be recovered in session 11 by re-rendering the previous HTML at
+candidate margins until the output matched the shipped file. They reproduce
+`PulseTrack-User-Guide.pdf` to within the 12-byte document id:
+
+```js
+// puppeteer-core, headless Chrome, from the scratchpad — never in package.json (D-QA-1)
+await page.goto("file:///" + SRC, { waitUntil: "domcontentloaded" });
+await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
+await page.emulateMediaType("print");           // ...which does NOT carry the opt-out above (§6e)
+// assert getComputedStyle(body).color is dark BEFORE writing — see §6e
+await page.pdf({ path: OUT, format: "A4", printBackground: true,
+                 margin: { top: "12mm", right: "12mm", bottom: "12mm", left: "12mm" } });
+```
 
 ```bash
 npm run dev          # dev server
@@ -1308,80 +1453,63 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**All three tiers are complete, promoted and live, and Tier 3 is confirmed on
-production.** `dev` and `main` hold identical content. Nothing is blocked, and
-**nothing left to do is code** — what remains is one check this machine cannot
-fake, one decision, the email, and a clock that has to run last.
+**All three tiers are complete, promoted and live. The demo database matches its
+own documentation, the cold start has been measured, and `.docs` holds only what
+an evaluator should read.** Nothing is blocked and **nothing left to do is code.**
 
-Ordered. **The only item that must happen today is the submission email (item
-4).** Item 1 needs another machine, items 2 and 3 are judgement calls that cost
-nothing to decline, and item 5 is a wait.
+Ordered. **Only item 2 is on the critical path**, and the deadline for it has
+already passed once.
 
-~~0a. Decide PR #45~~ · ~~0. Promote `dev` → `main`~~ · ~~1. Confirm Tier 3 on
-production~~ — **all three done in session 10.** #45 merged to `dev`, #46
-promoted to `main` at 15:10 UTC, and Joe confirmed Summarise works on the live
-URL. Production now serves all three tiers and `dev`/`main` hold identical
-content.
+~~2. Decide A3~~ · ~~3. The user guide and Tier 3~~ · ~~5. The cold start~~ —
+**all three done in session 11** (§1l, §1m). A3 was closed by restoring the
+database rather than re-documenting it; the guide gained a Tier 3 section and a
+re-exported PDF; the cold start measured 2.32s worst case with no `P1001`.
 
-**The register was also checked on production and is clean** — all ten records
-are fabricated identities, no real name or inbox, no `MRN-9999`. That was §9's
-standing pre-submission check after A2 and A8 both recurred, and it is now done
-for this deployment. It has to be redone if anyone creates a patient by hand
-between now and submitting.
+1. **Merge the open PRs and promote.** PR **#47** (the session 10 record) and
+   the session 11 branch are both waiting. `dev` → `main` afterwards, so the
+   repo a reader opens tells the truth about its own state. **Push as
+   `JoeYoussef44`, switching and pushing in one invocation** — §4 records why
+   switching once at the start of a session is not enough.
 
-1. **The fresh-clone dry run** (checklist 9.1) — 30–45 minutes, and **only a
-   human on another machine can do it**. Clone into a clean directory and follow
-   the README literally. It matters more now than it did yesterday: the README
-   gained an entire Tier 3 section and four new environment variables in session
-   8, and nobody has yet followed those instructions from nothing. CI has
-   already caught one defect of exactly this class — the `LayoutProps` typegen
-   failure in session 5.
+2. **The submission email.** Repo link, live URL, **a test clinician login**
+   (the brief requires it explicitly), what is built, what is deliberately not.
+   Lead with things **measured rather than claimed**: the FHIR import at 3418ms
+   against a 60s ceiling, the ugly CSV at 11/14/4, the summary at 4.5s with the
+   ungrounded path demonstrated, **396 tests**, and now **a 2.3s cold start**.
+   Point at `.docs/06-using-pulsetrack.html` — kept in the repo for exactly this
+   reason, and it now covers all three tiers.
 
-2. **Decide A3, the demo figures** — 20 minutes. Restore, or accept
-   10/16/201/2 and say so. **Recommendation: accept and document.** The
-   ugly-CSV rows have drifted back **twice** now, so a third manual restore will
-   not hold without changing the habit, and the FHIR-imported rows are Tier 2
-   *working* — an evaluator should see them. Do not leave two numbers
-   disagreeing anywhere an evaluator reads.
+   **The stated deadline was Wednesday 2026-08-26, end of day, and it has
+   passed.** Whether the email went out that evening is not recorded anywhere in
+   this repo. Establish that before anything else.
 
-3. **Optional, cheap: the user guide does not mention Tier 3.**
-   `.docs/06-using-pulsetrack.html` bills itself as covering every screen and
-   what happens when you click, and the patient page now has a panel it does not
-   describe. Either add a short section or accept the gap knowingly — but note
-   that rendering it again means re-running the D-DOC-1 checks and re-exporting
-   the PDF, so it is 20 minutes rather than 5.
+3. **The fresh-clone dry run** (checklist 9.1) — 30–45 minutes, and **only a
+   human on another machine can do it**. Still never done. The README gained an
+   entire Tier 3 section and four environment variables in session 8 and nobody
+   has followed those instructions from nothing. CI has already caught one
+   defect of exactly this class — the `LayoutProps` typegen failure in session 5.
 
-4. **Write the submission email** — 30 minutes. Repo link, live URL, **a test
-   clinician login** (the brief requires it explicitly), what is built, what is
-   deliberately not. Lead with things **measured rather than claimed**: the FHIR
-   import at 3418ms against a 60s ceiling, the ugly CSV at 11/14/4, the summary
-   at 4.5s with the ungrounded path demonstrated, **396 tests**. Point at
-   `.docs/06-using-pulsetrack.html` — it is the document to hand someone before
-   a walkthrough call. Worth one line that the first page load may be slow
-   because the free tier suspends compute; that reads as competence, not excuse.
+4. **If anyone creates a patient by hand between now and submitting, check the
+   register again.** A2 and A8 were the same real-identity leak twice, and
+   session 11 makes it three times that manual testing has left records behind
+   — the first two carried real identities, the third did not. Nothing in the
+   app prevents a fourth.
 
-   **This is now the only item on the critical path that has to happen today.**
-   Items 1 to 3 are optional or need another machine; item 5 is a wait.
+### Closed in session 11, do not redo
 
-5. **The cold start — last, and alone.** Leave the deployment
-   idle about an hour, then load `/login` and time it. It is the single request
-   an evaluator is guaranteed to make and the one path never observed working
-   end to end (§1b).
-
-   **The clock started at 15:10 UTC on 2026-08-26**, when #46 deployed. Every
-   read of the live site since — including session 10's verification pass — has
-   reset it again, so start counting from the last time anyone touched it.
-   **It cannot overlap with anything.** Every deploy runs `prisma migrate
-   deploy`, which connects to Neon and wakes the compute, so any deploy — and
-   any preview visit, seed, or `prisma studio` — resets the clock to zero.
-   Pass: the page loads, even slowly. Fail: an error, or `P1001` in the Vercel
-   function logs, in which case raise `connectionTimeoutMillis` in `lib/db.ts`,
-   redeploy, and wait another hour. That re-verification cost is the argument
-   for starting the wait no later than early evening.
-
-7. *(Was a second promotion, once the session records landed. They landed in
-   #43 before the session ended, so item 0 is the only one left — unless a
-   further session adds commits to `dev` after the production promotion.)*
+- ~~A3, the drifted demo figures~~ — **restored**, not re-documented. 8 / 9 /
+  190 / 1, verified on production. §1l.
+- ~~The cold start was never observed~~ — **measured and passing.** §1m. Do not
+  re-run it hoping for a cleaner number; re-run it only if `lib/db.ts` changes.
+- ~~The user guide did not mention Tier 3~~ — a full §9, plus the coverage
+  table, the walkthrough and two corrected masthead claims. PDF re-exported.
+- ~~The register might carry a real identity~~ — **all records checked and
+  fabricated** before the deletions, which is the order §4c requires.
+- ~~Where the `.docs` PDFs' render settings live~~ — recovered and **written
+  down in §5**. Do not derive them again.
+- ~~Two hand-made test patients and four ugly-CSV upload records~~ — deleted.
+  Their FHIR resources 819 and 830 stay on the shared server; that is expected
+  and permanent.
 
 ### Closed in session 10, do not redo
 
