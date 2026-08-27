@@ -8,12 +8,142 @@ reconstruct it from diffs.
 
 ---
 
-## Session 10 — 2026-08-26 (Wed) — the clinic analytics reviewed, and a change that moves nothing today
+## Session 11 — 2026-08-27 (Thu) — the cleanup before the link goes out
 
-One PR (#45), **open on `dev` and not merged**. Tests 363 → 396. A review of the
-clinic lab analytics built in session 9 rather than a rebuild: the histograms,
-the trend, the reference context, the unit protection and the styling all
-survive.
+A tidy-up requested before sharing the repo with the team. Four things, none of
+them code, and every one of them a decision about what a reader should find.
+Tests unchanged at 396.
+
+### The demo database is back to what the documents say it is
+
+A3 has been open since session 5 and drifted twice more since. Session 10's
+recommendation was to **accept and re-document** it, on the reasoning that a
+third manual restore would not hold. Session 11 **reverses that** — not because
+the reasoning was wrong, but because its premise expired: this is the last
+cleanup before the link goes out, so there is no fourth round of testing left to
+drift.
+
+```
+before:  patients=10  assessments=16  answers=88  labs=201  uploads=5
+after:   patients=8   assessments=9   answers=56  labs=190  uploads=1
+```
+
+Two patients created by hand during manual testing on the live site — one of
+them carrying **six assessments and no lab results**, which reads as debris
+rather than a demo — and four `lab-results-ugly.csv` upload records, **three of
+which accepted zero rows**. What remains is exactly what `npm run db:seed`, one
+upload of the clean CSV and one **Import** reproduce.
+
+### The order of the checks was the part that mattered
+
+Deleting was easy. Establishing that it was safe to delete was the work, and it
+had to happen in a specific order:
+
+- **Every record was confirmed fabricated first.** §4c's procedure for a leaked
+  identity is *rename locally, re-push to the platform, then delete* — because
+  the platform copy can only be corrected through `pushPatient`, which needs the
+  local row. **Delete first and the platform copy becomes uncorrectable.**
+  Nothing needed correcting, but that was established rather than assumed, and
+  had it not been, the deletions would have destroyed the only way to fix it.
+- **D-QA-2**: none of the 11 lab rows had been pushed to the platform, so
+  nothing is orphaned there. A write to that server cannot be undone.
+- **`SEED_MRNS` was read, not inferred.** It is `MRN-2001`–`MRN-2005`, so no
+  future **Import** can resurrect the deleted patients. The ownership flag
+  implied this; the constant proves it.
+
+The two deleted patients' FHIR resources, **819** and **830**, stay on the
+shared server carrying fabricated identities, because it disables DELETE. Same
+permanent caveat as §4b and §4c of `state.md`.
+
+### A consequence worth naming rather than discovering later
+
+The register no longer holds a result in a non-canonical unit, so **the
+histogram's "all excluded for unit" state — built in session 10 — no longer
+appears anywhere on the demo site.** The behaviour and its tests are untouched
+and D-25 still holds, but it is no longer demonstrable by looking at the
+deployment. That is a real cost of the cleanup, and it was accepted knowingly
+rather than noticed afterwards.
+
+### Six documents left the repo, and one reference had to follow them
+
+The project overview, the Tier 1 acceptance checklist and the Tier 2 integration
+explainer, with their three PDFs, now live at
+`C:\Users\User\Desktop\Joe\PulseTrack-Docs\`. `.docs` keeps the five official
+Capadev attachments, the analysis, the ugly-CSV expectations, and **the user
+guide** — kept deliberately, because it is the document to hand someone before a
+walkthrough call and the submission email points at it.
+
+Moving `04-tier2-fhir-integration.html` left a **dangling pointer inside the
+user guide**, which sent a reader there for the integration diagram. It now
+points at the README — and the README was checked to actually carry both the
+diagram and the sync sequence, rather than being assumed to.
+
+### The user guide covers Tier 3
+
+It had billed itself as covering every screen while the patient page had a panel
+it never mentioned. It gains a full §9 — the five states the panel can say, what
+the model is given, and, more usefully, **what the mechanical check cannot do**:
+it catches invented numbers, and it will never catch a fluent non-numeric wrong
+claim. That is the honest version, and it is why the figures are rendered beside
+the prose.
+
+Also a step on the patient-page walkthrough, a Tier 3 row in the coverage table
+answering the brief's four questions, **Summarise** in the ten-minute tour, and
+two masthead claims corrected — the guide had described itself as "Tier 1 and
+Tier 2, end to end".
+
+### Two ways the re-export nearly went wrong
+
+**A red probe that lied, §6e in its second costume.** The print check reported
+light text on a white page — the failure that looks perfect on screen right up
+until the PDF is opened. The stylesheet was fine; the *checker* was wrong.
+`emulateMediaType("print")` does not carry the `data-theme="light"` opt-out,
+which has to be set explicitly — which §6 of `state.md` already said, about this
+exact document. A probe's verdict is a claim about the probe until its mechanism
+is understood.
+
+**The render settings were nowhere.** Guessing would have silently reflowed
+sixteen pages of a shipped document. They were recovered instead: render the
+*previous* HTML from `git show HEAD:` at candidate margins and compare against
+the shipped file. **A4, `printBackground`, 12mm margins** reproduces it to
+within 12 bytes of 633,800 — the document id and nothing else. Now written into
+§5 of `state.md` so nobody derives it a second time.
+
+The general shape: **an artefact nobody can reproduce is an artefact nobody can
+safely change.** The recipe was cheap to recover today and would have been
+expensive to recover after the layout had already moved.
+
+### The cold start, finally measured
+
+The one path never observed working end to end, and the single request an
+evaluator is guaranteed to make. After ~34 minutes idle:
+
+| Path | Cold | Warm |
+|---|---|---|
+| `/login` | **2.32s** | 0.61–0.76s |
+| `/assessment/<bad-token>` — queries Neon | **1.61s** | 0.57s |
+
+Pass: 200 both times, no error page, **no `P1001`**, so `connectionTimeoutMillis`
+does not need raising.
+
+`/login` was the documented check, but it does not necessarily touch the
+database — and the documented failure mode is a *Prisma connection* error. The
+public assessment-token route was measured alongside it precisely because it
+queries Neon without a session. **The documented check would have measured the
+lambda cold start and told us nothing about the compute wake**, while looking
+like a pass either way.
+
+---
+
+## Session 10 — 2026-08-26 (Wed) — the clinic analytics reviewed, a change that moves nothing today, and production caught up
+
+Two PRs: **#45** (the analytics review, merged to `dev`) and **#46** (the
+`dev` → `main` promotion). Tests 363 → 396. A review of the clinic lab analytics
+built in session 9 rather than a rebuild: the histograms, the trend, the
+reference context, the unit protection and the styling all survive.
+
+*(The first half of this entry was written while #45 was still open. It merged,
+and then everything was promoted — see "Production caught up" at the end.)*
 
 ### The requested change, and the honest measurement of it
 
@@ -107,6 +237,82 @@ diff and someone will otherwise check it again:
 - **Aggregation location** — already server-side, pure, `cache`d, one query.
 - **A monthly median line** — considered and declined. The mean is the requested
   trend and a second series costs more clarity than it adds.
+
+### Production caught up, after three sessions of drift
+
+`main` had been serving the session-8 code since PR #37. #45 merged to `dev`,
+then **#46 promoted `dev` → `main` at 15:10 UTC** carrying **19 commits** — the
+session 8 record, all of session 9, and session 10. `git diff origin/dev
+origin/main` is now empty.
+
+The migration it carried was one line, and deliberately of the safe kind:
+
+```sql
+ALTER TABLE "assessments" ADD COLUMN "emailDeliveredAt" TIMESTAMP(3);
+```
+
+`dev` and `main` share one Neon database, so this was checked before promoting
+rather than after. A nullable column is additive, and it had already been applied
+when `dev` deployed in session 9 — which is why production had been safe running
+the *previous* code against it all along.
+
+**Verified on production afterwards, signed in and read-only**, because a deploy
+completing is not the same as the new code being what serves: the "clinic monthly
+average" heading present and the old "clinic monthly mean" gone, the four-state
+histogram legend rendering, 7 charts with 37 bars and 39 dots of real geometry,
+zero horizontal overflow, no console errors, `/login` 200 in 1.36s, `/dashboard`
+signed out 307.
+
+**Tier 3 was then confirmed on the live URL by Joe**, which closes A7 — it had
+only ever been verified on the preview deployment, and production reads a
+separate set of Vercel environment variables. All three tiers are now confirmed
+working on production rather than inferred from a preview.
+
+### The register was checked, and this time it was clean
+
+A2 and A8 were the same defect twice: a real identity created by ordinary manual
+testing on the live site, the second time pushed to a publicly readable FHIR
+server. §9 has carried a standing "check the register before submitting" ever
+since. It was checked on production: **ten records, all fabricated**, no real
+name or inbox, no `MRN-9999`.
+
+Worth recording how nearly that check lied. The probe matched the string `Test`
+and reported a hit — but the matches were `LATEST BAND` in the table header and
+the `@example.test` domain on five fabricated addresses. A case-insensitive
+substring search for identity fragments produces false positives from ordinary
+UI text, and the reflex on seeing one is to go looking for a leak that is not
+there. **Print the match in context before believing it** — same lesson as every
+other probe in this file, in its sixth costume.
+
+### An interview guide, on the Desktop and not in the repo
+
+~13,800 words: the business walkthrough (every screen, every chart, what each
+number means), the technical walkthrough (JWT and where it lives, Prisma and why,
+Neon and the cold start, the two Tier-1 API styles, the FHIR API and its three
+silent traps, the AI design), **42 rehearsed interview questions**, the measured
+numbers, and the limitations worth volunteering before being asked.
+
+**Deliberately outside the repo**, at Joe's explicit request — it is preparation,
+not a deliverable, and the submission should not carry it. Recorded here so a
+later session does not look for it in `.docs` or write it again.
+
+It was checked the way `.docs` documents are (D-DOC-1) rather than assumed:
+zero overflow at five widths, no broken anchors among 37 nav links, no charset
+mojibake, and the print stylesheet asserted to render dark text on white — the
+§6e failure that looks perfect on screen right up until the PDF is opened. The
+first check found 44px of overflow at 375px from long inline `<code>` spans and a
+wide table; both fixed.
+
+### The `gh` active account had drifted
+
+Found set to `JoeYoussef44C` rather than `JoeYoussef44`. Switched back with
+`gh auth switch`, never a re-authentication — the token was already in the
+keyring, which is what `CLAUDE.md` says to do.
+
+**Nothing was mis-attributed.** Git's `user.name`/`user.email` are separate from
+the `gh` CLI's active account, so every commit is authored correctly regardless;
+the active account only affects `gh` commands and pushes. The habit worth keeping
+is checking it *before* a push rather than after a rejection.
 
 ---
 
