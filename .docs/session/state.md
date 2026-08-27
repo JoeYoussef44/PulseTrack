@@ -566,6 +566,29 @@ gh auth status | grep -B1 "Active account: true"
 gh auth switch --user JoeYoussef44     # never re-authenticate; the token is in the keyring
 ```
 
+**And the switch does not reliably survive to the next shell.** Session 10
+switched to `JoeYoussef44`, verified it, and the *next* push still failed with
+`remote: Permission to JoeYoussef44/PulseTrack.git denied to JoeYoussef44C` —
+by which time `gh auth status` read `JoeYoussef44C` again. The cause is the
+helper order:
+
+```
+credential.helper=manager                            <- Windows Credential Manager, tried FIRST
+credential.https://github.com.helper=!gh auth git-credential
+```
+
+The Windows Credential Manager can serve a cached token for the other account
+before the `gh` helper is ever consulted. **Switch and push in the same
+invocation**, and verify the active account immediately before, rather than
+switching once at the start of a session and trusting it:
+
+```bash
+gh auth switch --user JoeYoussef44 && git push -u origin <branch>
+```
+
+This is B1 recurring in a new form. B1 was "the push is rejected, so switch"; the
+new shape is "the switch succeeded, and the push was still rejected."
+
 ### The demo database has drifted from what the docs claim
 
 Measured at the end of session 3:
