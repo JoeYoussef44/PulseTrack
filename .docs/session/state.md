@@ -1,9 +1,9 @@
 # PulseTrack — current state
 
 > **Living document. Update it at the end of every working session.**
-> Last updated: **2026-08-26**, session 10 (the clinic analytics reviewed —
-> patients weighted equally in the trend, a float boundary bug in the histogram,
-> and a bucket that had been implying it was normal).
+> Last updated: **2026-08-26**, session 10 (the clinic analytics reviewed, then
+> everything promoted to production — all three tiers are now live on `main`,
+> and Tier 3 has been confirmed working there).
 
 ---
 
@@ -35,16 +35,19 @@ pending. It also removed a real identity that had reappeared in the
 live database and on the national platform (§4c).
 
 **Session 10 reviewed the analytics session 9 built** (§1j) rather than
-rebuilding them. PR **#45 is open on `dev` and not merged** — CI is green and
-the preview deployed. Tests 363 → 396.
+rebuilding them, then **promoted everything to production**. Tests 363 → 396.
 
-What remains before submitting is in §9. Nothing is blocked.
+**`dev` and `main` are level again, and production is current.** PR #45 merged
+to `dev`; PR **#46 promoted `dev` → `main`** at 15:10 UTC on 2026-08-26, carrying
+**19 commits** — the session 8 record, all of session 9, and session 10.
+`git diff origin/dev origin/main` is **empty**: the two branches hold identical
+content, and `main` is two commits ahead only in merge topology.
 
-**`dev` and `main` are no longer level.** That sentence was true through session
-8 and is not now: `dev` is **11 commits ahead**, and those commits are
-functional, not documentation. Production still serves the session-8 code, so
-none of §1i is on the live URL yet. Promoting is §9 item 0, and Joe is doing it
-himself.
+**Everything the brief asks for is now live on the production URL**, and
+**Tier 3 has been confirmed working there by Joe** — A7 is closed (§3).
+
+What remains before submitting is in §9. Nothing is blocked, and nothing left is
+code.
 
 | Phase | Status |
 |---|---|
@@ -64,11 +67,11 @@ himself.
 | 15 · Sign-in page, mark, favicon | ✅ Complete and live (PRs #32, #33) |
 | 16 · User guide + repo sweep | ✅ Complete (PR #34) |
 | 12 · Tier 3 — AI trajectory summary | ✅ **Complete and live** (PRs #36, #37) |
-| 17 · Assessment record + review page | ✅ Complete, on `dev` (PR #41) |
-| 18 · Clinic insight dashboard | ✅ Complete, on `dev` (PR #42) |
-| 19 · Session 9 record | ✅ Complete, on `dev` (PR #43) |
-| 20 · Clinic analytics review | 🟡 **PR #45 open on `dev`, unmerged** — §1j |
-| 11 · Submit | ⬜ **NEXT** — due Wed 2026-08-26 |
+| 17 · Assessment record + review page | ✅ **Complete and live** (PR #41, promoted in #46) |
+| 18 · Clinic insight dashboard | ✅ **Complete and live** (PR #42, promoted in #46) |
+| 19 · Session 9 record | ✅ Complete (PRs #43, #44) |
+| 20 · Clinic analytics review | ✅ **Complete and live** (PR #45, promoted in #46) |
+| 11 · Submit | ⬜ **NEXT — and the only thing left.** Due Wed 2026-08-26 |
 
 ### Tier 1 against the brief's own six areas
 
@@ -405,7 +408,7 @@ Tests **299 → 363**.
 
 ---
 
-### 1j. Session 10 — the clinic analytics reviewed (PR #45, open, unmerged)
+### 1j. Session 10 — the clinic analytics reviewed (PRs #45, #46, live)
 
 A review of §1i's panels, not a rebuild. The histograms, the trend, the
 reference context, the unit protection and the styling all survive.
@@ -470,6 +473,32 @@ README gains **D-23** (the weighting, with the worked example), **D-24** (bucket
 anchoring and the four states) and **D-25** (unit exclusion, and why clinic
 figures use the catalog's range while patient charts use the reported one).
 
+**Then it was promoted.** PR #45 merged to `dev`, PR #46 took `dev` → `main`.
+Verified **on production** afterwards, signed in, read-only: the new headings and
+captions are what the live site serves ("clinic monthly average" present, the old
+"clinic monthly mean" gone), the four-state histogram legend renders, 7 charts /
+37 bars / 39 dots with real geometry, zero horizontal overflow at 1440, no
+console errors, `/login` 200 in 1.36s and `/dashboard` signed out 307.
+
+### 1k. The interview guide — outside the repo, deliberately
+
+`C:\Users\User\Desktop\PulseTrack-Interview-Guide.html` — a ~13,800-word
+self-contained walkthrough written for the Thursday call: the business side
+(every screen, every chart, what each number means), the technical side (JWT and
+where it lives, Prisma and why, Neon and the cold start, the two Tier-1 API
+styles, the FHIR API and its three silent traps, the AI design), **42 rehearsed
+interview questions** with the substance of an answer each, the measured numbers,
+and the known limitations worth volunteering.
+
+**It is on the Desktop and not in `.docs`, at Joe's explicit request.** Recorded
+here so a later session knows it exists and does not look for it in the repo or
+recreate it. It is not part of the submission.
+
+Checked the way `.docs` documents are (D-DOC-1): zero horizontal overflow at
+1920/1440/1280/768/375, no broken anchors among 37 nav links, no console errors,
+no charset mojibake, and the print stylesheet confirmed rendering dark text on
+white — the §6e failure that looks fine on screen until the PDF is opened.
+
 ---
 
 ## 2. Deadline
@@ -494,7 +523,8 @@ figures use the catalog's range while patient charts use the reported one).
 | ~~A5~~ | ~~`main` is three commits behind `dev`~~ | **CLEARED, session 8.** Promoted as #35. |
 | ~~A6~~ | ~~`dev` was 16 commits behind `main`~~ | **CLEARED, session 8.** Tier 3 was merged straight to `main` in #37, bypassing `dev`, so the Preview environment and any new branch would have silently lacked it. `dev` was a clean ancestor and fast-forwarded. **Watch for this again:** the documented flow is feature → `dev` → `main`, and a feature merged directly to `main` leaves `dev` stale without warning. |
 | **A8** | **A real identity reappeared in the live database — now removed** | `MRN-9999` was created during manual testing on 2026-08-26 carrying a real name, inbox, mobile and date of birth, and was **pushed to the shared FHIR server as resource 831**. Cleaned in session 9 — §4c. **This is A2 recurring.** Manual testing on the live site created it; nothing prevents the next one. |
-| **A7** | **Tier 3 on production is unconfirmed** | Summarise was verified on the **preview** deployment. Production reads a *separate* set of Vercel environment variables. If `AI_PROVIDER` / `AI_API_KEY` / `AI_MODEL` were set for Preview only, the live panel reads "not configured on this deployment". One click on any patient at the live URL settles it. |
+| ~~A7~~ | ~~Tier 3 on production is unconfirmed~~ | **CLEARED, session 10.** Joe clicked Summarise on the live URL and it works, so the `AI_*` variables are set for Production as well as Preview. All three tiers are now confirmed working on production. |
+| ~~A9~~ | ~~`dev` 19 commits ahead of `main`~~ | **CLEARED, session 10.** PR #46 promoted at 15:10 UTC. Content is identical across the two branches. |
 
 ---
 
@@ -522,6 +552,19 @@ Secrets live in **`.env`** (gitignored, never committed). `.env.example` holds t
 | `AI_REASONING_EFFORT` | ⬜ | Leave unset. Only for a reasoning model, and Gemini answers `400` to values it does not accept |
 
 **Database:** Neon, Postgres 17.11, AWS us-east-1 (matches Vercel's default `iad1`).
+
+**The `gh` active account drifts.** The machine holds three GitHub accounts in
+the keyring and the active one was found set to **`JoeYoussef44C`** during
+session 10, not `JoeYoussef44`. It was switched back. Nothing was
+mis-attributed — git's `user.name`/`user.email` are separate from the `gh` CLI's
+active account, so every commit is authored correctly either way; the active
+account only affects `gh` commands and pushes. **Check it before pushing** rather
+than after a rejection:
+
+```bash
+gh auth status | grep -B1 "Active account: true"
+gh auth switch --user JoeYoussef44     # never re-authenticate; the token is in the keyring
+```
 
 ### The demo database has drifted from what the docs claim
 
@@ -758,6 +801,7 @@ syntax error), and it must live **inside the project** for `@/` to resolve.
 | **A reference band outside the plotted domain is silently absent** | `TrendChart` shades the reference range — but only where it falls inside the y-domain. Every monthly HbA1c mean sits above the ceiling, so the band is never drawn, and a line trending downward reads as a clinic in range when nothing in it is. The chart is not wrong, it is *silent*. Where the visual channel has nothing to show, the caption has to say it in words. |
 | **A bin index computed as divide-then-floor is a float bug waiting** | `(5.5 - 4.0) / 0.5` is `2.9999999999999996`, so `Math.floor` puts a value that sits *exactly* on a bucket edge one bucket below the one its own label names. The bar is one place to the left and nothing about the chart looks wrong. Snap to the nearest integer when the remainder is within ~1e-9, which is also what a half-open `[from, to)` interval means. |
 | **A fill colour is a claim about every value the shape covers** | A histogram bucket painted "in range" asserts that of all of it, and the assertion is false the moment the bucket crosses the boundary the colour is about — glucose's ceiling of 99 inside an 80–100 bucket. Anchor the bin grid at a reference limit so limits fall on edges, and where one still lands inside a bucket, paint it neutral and say which limit it spans. Same shape as the unit finding: **a decision that is right at one layer becomes a defect at the next.** |
+| **A substring search for identity fragments produces false positives from ordinary UI text** | Grepping a rendered page for `Test`, `Joe`, `gmail` and so on to check for a real identity matched **`LATEST BAND`** in a table header and the `@example.test` domain on five fabricated addresses. The reflex on seeing a hit is to go looking for a leak that is not there. **Print every match in context before believing it**, and prefer word boundaries. The check itself is still worth running — A2 and A8 were the same real defect twice. |
 | **A single `mouse.move` does not open a Recharts tooltip** | It listens for `mousemove`, and one jump from the origin does not reliably produce one over the plot area. Two moves do. A probe doing it once reports a working tooltip as dead — the fifth session running that a red probe was a claim about the probe. |
 | **`g.recharts-cartesian-axis text` matches nothing** | While `.recharts-cartesian-axis-tick-value` matches every tick on the same page. Separate x ticks from y by comparing rendered `getBoundingClientRect().top` rather than by trusting a class name the library is free to change. |
 | **A histogram bucket that is clinically sensible can still be useless** | 10 mmHg put the entire register's systolic pressure in three enormous bars. Blood pressure varies over a narrower range than glucose; the bucket width has to suit the measure's spread, not just its units. Draw it and look. |
@@ -1182,7 +1226,7 @@ New in session 3:
 ## 8b. Git workflow — follow this for every remaining phase
 
 Published at **https://github.com/JoeYoussef44/PulseTrack**, merge-based
-topology, 30 merged PRs, branches kept after merge.
+topology, **46 merged PRs**, branches kept after merge.
 
 | PR | Branch | Contents |
 |---|---|---|
@@ -1218,6 +1262,14 @@ topology, 30 merged PRs, branches kept after merge.
 | #36 | `feat/ai-trajectory-summary` | **Tier 3** — facts, prompt, verifier, provider, service, route, panel |
 | #37 | `feat/ai-trajectory-summary` → `main` | Tier 3 promoted. **Went straight to `main`, bypassing `dev`** — see A6 |
 | #38 | `docs/session-7` | the session 7 record, committed in session 7 and pushed in session 8 |
+| #39 | `dev` → `main` | promotion of the session 8 work |
+| #40 | `docs/session-8` | the session 8 record |
+| #41 | `feat/assessment-record` | `emailDeliveredAt`, the assessment review page, the seed answer fix |
+| #42 | `feat/clinic-insights` | the four clinical dashboard panels |
+| #43 | `docs/session-9` | the session 9 record |
+| #44 | `docs/session-9-followup` | three corrections to that record before the session ended |
+| #45 | `feat/clinic-analytics-fairness` | patient-weighted clinic trend, the float bin index, four bucket states, per-test unit states |
+| #46 | `dev` → `main` | **promotion of sessions 8–10.** 19 commits. Production is now current |
 
 ### The branch flow changed in session 5
 
@@ -1233,51 +1285,28 @@ Branch, incremental commits, tests green, PR with real output in the body,
 
 ## 9. Next session — start here
 
-**All three tiers are complete and live. Session 9's three PRs (#41, #42, #43)
-are merged to `dev`, and `dev` is 11 commits ahead of `main`** — production is
-still serving the session-8 code. Nothing is blocked. What remains is one
-promotion, one check this machine cannot fake, one decision, the email, and a
-clock that has to run last.
+**All three tiers are complete, promoted and live, and Tier 3 is confirmed on
+production.** `dev` and `main` hold identical content. Nothing is blocked, and
+**nothing left to do is code** — what remains is one check this machine cannot
+fake, one decision, the email, and a clock that has to run last.
 
-Ordered. The critical path is item 2, because only a human can do it, and item 6,
-because it cannot overlap with anything.
+Ordered. **The only item that must happen today is the submission email (item
+4).** Item 1 needs another machine, items 2 and 3 are judgement calls that cost
+nothing to decline, and item 5 is a wait.
 
-0a. **Decide PR #45** — the clinic analytics review (§1j). It is open on `dev`,
-   unmerged, CI green, preview deployed. It is a correctness fix that changes no
-   current output on this register, so merging it is safe and *not* merging it
-   costs nothing visible today either. Merge before item 0 if it is going in at
-   all, so there is one promotion rather than two.
+~~0a. Decide PR #45~~ · ~~0. Promote `dev` → `main`~~ · ~~1. Confirm Tier 3 on
+production~~ — **all three done in session 10.** #45 merged to `dev`, #46
+promoted to `main` at 15:10 UTC, and Joe confirmed Summarise works on the live
+URL. Production now serves all three tiers and `dev`/`main` hold identical
+content.
 
-   ```bash
-   gh pr merge 45 --merge
-   ```
+**The register was also checked on production and is clean** — all ten records
+are fabricated identities, no real name or inbox, no `MRN-9999`. That was §9's
+standing pre-submission check after A2 and A8 both recurred, and it is now done
+for this deployment. It has to be redone if anyone creates a patient by hand
+between now and submitting.
 
-0. **Promote `dev` → `main`. Joe is doing this himself** — asked at the end of
-   session 9 and answered "hold, I'll promote myself", so this is not waiting on
-   an agent and should not be done for him unasked.
-
-   The code and the record are both on `dev` already, so this is now a single
-   promotion rather than the two the list used to carry. The migration it
-   brings — `Assessment.emailDeliveredAt` — is **purely additive and already
-   applied** to the shared database, so production has been safe running the
-   previous code against it all along.
-
-   ```bash
-   gh pr create --base main --head dev
-   gh pr merge <n> --merge
-   ```
-
-   **Do this before item 6, not after.** Every deploy runs `prisma migrate
-   deploy`, which wakes Neon and resets the cold-start clock to zero.
-
-1. **Confirm Tier 3 on production** (A7) — 5 minutes. Summarise was verified on
-   the **preview** deployment; production reads a *separate* set of Vercel
-   environment variables. Open any patient with lab history on the live URL and
-   click Summarise. If it says "not configured on this deployment", the `AI_*`
-   variables were set for Preview only — add them for Production and
-   **redeploy**, because Vercel reads them at build time (§6d).
-
-2. **The fresh-clone dry run** (checklist 9.1) — 30–45 minutes, and **only a
+1. **The fresh-clone dry run** (checklist 9.1) — 30–45 minutes, and **only a
    human on another machine can do it**. Clone into a clean directory and follow
    the README literally. It matters more now than it did yesterday: the README
    gained an entire Tier 3 section and four new environment variables in session
@@ -1285,33 +1314,40 @@ because it cannot overlap with anything.
    already caught one defect of exactly this class — the `LayoutProps` typegen
    failure in session 5.
 
-3. **Decide A3, the demo figures** — 20 minutes. Restore, or accept
+2. **Decide A3, the demo figures** — 20 minutes. Restore, or accept
    10/16/201/2 and say so. **Recommendation: accept and document.** The
    ugly-CSV rows have drifted back **twice** now, so a third manual restore will
    not hold without changing the habit, and the FHIR-imported rows are Tier 2
    *working* — an evaluator should see them. Do not leave two numbers
    disagreeing anywhere an evaluator reads.
 
-4. **Optional, cheap: the user guide does not mention Tier 3.**
+3. **Optional, cheap: the user guide does not mention Tier 3.**
    `.docs/06-using-pulsetrack.html` bills itself as covering every screen and
    what happens when you click, and the patient page now has a panel it does not
    describe. Either add a short section or accept the gap knowingly — but note
    that rendering it again means re-running the D-DOC-1 checks and re-exporting
    the PDF, so it is 20 minutes rather than 5.
 
-5. **Write the submission email** — 30 minutes. Repo link, live URL, **a test
+4. **Write the submission email** — 30 minutes. Repo link, live URL, **a test
    clinician login** (the brief requires it explicitly), what is built, what is
    deliberately not. Lead with things **measured rather than claimed**: the FHIR
    import at 3418ms against a 60s ceiling, the ugly CSV at 11/14/4, the summary
-   at 4.5s with the ungrounded path demonstrated, 299 tests. Point at
+   at 4.5s with the ungrounded path demonstrated, **396 tests**. Point at
    `.docs/06-using-pulsetrack.html` — it is the document to hand someone before
    a walkthrough call. Worth one line that the first page load may be slow
    because the free tier suspends compute; that reads as competence, not excuse.
 
-6. **Final deploy, then the cold start — last, and alone.** Leave the deployment
+   **This is now the only item on the critical path that has to happen today.**
+   Items 1 to 3 are optional or need another machine; item 5 is a wait.
+
+5. **The cold start — last, and alone.** Leave the deployment
    idle about an hour, then load `/login` and time it. It is the single request
    an evaluator is guaranteed to make and the one path never observed working
    end to end (§1b).
+
+   **The clock started at 15:10 UTC on 2026-08-26**, when #46 deployed. Every
+   read of the live site since — including session 10's verification pass — has
+   reset it again, so start counting from the last time anyone touched it.
    **It cannot overlap with anything.** Every deploy runs `prisma migrate
    deploy`, which connects to Neon and wakes the compute, so any deploy — and
    any preview visit, seed, or `prisma studio` — resets the clock to zero.
@@ -1326,6 +1362,15 @@ because it cannot overlap with anything.
 
 ### Closed in session 10, do not redo
 
+- ~~PR #45 unmerged~~ — merged to `dev`, then promoted to `main` in **#46**.
+- ~~`dev` ahead of `main` (A9)~~ — promoted. Content identical across branches.
+- ~~Tier 3 unconfirmed on production (A7)~~ — **Joe confirmed it works on the
+  live URL.** All three tiers are now verified on production, not just preview.
+- ~~The register might carry a real identity~~ — checked on production, all ten
+  records fabricated. Redo only if a patient is created by hand before
+  submitting.
+- ~~An interview-prep document~~ — written to the **Desktop**, outside the repo
+  at Joe's request (§1k). Not part of the submission; do not recreate it.
 - ~~The clinic trend over-weighted frequently-measured patients~~ — patient
   normalisation, PR #45. **And it moves nothing on this register** (§1j) — do
   not re-measure hoping for a bigger number.
